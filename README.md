@@ -1,4 +1,4 @@
-# quantum-routing-optimilisation
+# quantum-routing-optimisation
 Thesis project on quantum routing optimisation. 
 
 Open IBM Quantum Composer to run the the test circuit from test_circuits/
