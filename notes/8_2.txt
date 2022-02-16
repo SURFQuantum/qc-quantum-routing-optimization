@@ -1,0 +1,24 @@
+## 8 February
+
+[] Goal is code for general topology => broad perspective, also other than Quantum Inspire
+
+[] Working on phase IBM transpiler pass
+   - Call functions like routing map
+
+[] Improve cost function
+[] Literature review
+   - What is out there on state representation and cost functions based on SWAP gates
+
+[] Presentation every week
+
+[] Write quantum assembly code for the circuit algorithms
+[] run the code with different topologies (Pozzi's algorithm)
+[] Reduce the circuit depth overhead
+
+[] Look into deductioin of timesteps, for instance with parallel qubit routing
+[] What kind of qubit inhabits compute faster with what kind of gates
+[] What can we take into account:
+   - These gates interact faster with eachother (ask hardware team)
+
+[] Look for a better state representation
+[] Tutorial on how HPC works
