@@ -1,0 +1,31 @@
+## 15 February
+
+#### Summary: begin backwards & understand how the Pozzi code works (Understand state definition and to extend it with features), so it is easier to optimize their code
+
+[] Choose problem i.e. placement problem (multi-armed bandit typical for reinforcement learning/machine learning), routing optimization, mapping optimization
+[] Next two weeks:
+  - Stick to the Github code and optimize their code and change their cost- and/or reward-function
+  - Reach policy faster (Variational policy paper, https://arxiv.org/pdf/2103.05577v1.pdf), but surf has different policy gradient
+
+[] Look into depth for the cost function
+[] General for every gate, instead only SWAP
+[] Run with Qiskit & Pozzi => check the overhead and compare them
+
+[] How can we change the code
+   - Better reinforcement problem
+   - State probability
+   - Add features, understand when to add them and check whether it does improve anything
+   - Making it a general language model that is cheap (processing time) for other topologies
+       -> Change environment and mathematically change it to general topology:
+		- Generic environment
+		- rewrite cost & reward
+
+[] Benchmark SABRE, Q-Learning, Pozzi, PYZX
+   - Check what architecture & type of state is used
+
+
+
+
+
+
+
