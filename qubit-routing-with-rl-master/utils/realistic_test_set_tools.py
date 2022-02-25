@@ -1,13 +1,15 @@
 import os
-
+import sys
 from qiskit import QuantumCircuit
-from environments.circuits import QubitCircuit
 
+
+sys.path.insert(0, os.path.abspath('/home/darwesh/quantum-routing-optimisation/qubit-routing-with-rl-master'))
+from environments.circuits import QubitCircuit
 
 def import_test_set():
     print('Importing test set...')
 
-    directory_path = "../my_circuits/"
+    directory_path = "./my_circuits/"
 
     files = os.listdir(directory_path)
     qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
