@@ -4,7 +4,10 @@ import copy
 import matplotlib.pyplot as plt
 import time as time_module
 import random
+import os
+import sys
 
+sys.path.insert(0, os.path.abspath('/home/liza/Github/quantum-routing-optimisation/qubit-routing-with-rl-master'))
 from multiprocessing import Pool, cpu_count
 
 from agents.paired_state_agent import DQNAgent
@@ -15,6 +18,8 @@ from utils.experience_db import ExperienceDB
 from agents.model_trainer import train_model
 from agents.swap_scheduler import schedule_swaps
 from utils.circuit_tools import generate_completely_random_circuit
+
+
 
 training_episodes = 100
 test_episodes = 100

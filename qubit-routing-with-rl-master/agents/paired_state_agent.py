@@ -4,8 +4,8 @@ import random
 
 from keras.models import Sequential
 from keras.layers import Dense
-#from tensorflow.keras.optimizers import Adam
-from keras.optimizers import adam_v2
+from tensorflow.keras.optimizers import Adam
+#from keras.optimizers import adam_v2
 from keras.models import model_from_json
 from keras import backend as K
 
@@ -50,7 +50,7 @@ class DQNAgent:
         model.add(Dense(32, activation='relu'))
         model.add(Dense(1, activation='linear'))
         model.compile(loss='mse',
-                      optimizer=adam_v2.Adam(lr=self.learning_rate))
+                      optimizer=Adam(lr=self.learning_rate))
         return model
 
     def update_target_model(self):
@@ -91,7 +91,7 @@ class DQNAgent:
 
         # Load weights into new model
         self.current_model.load_weights(filepath + ".h5")
-        self.current_model.compile(loss='mse', optimizer=adam_v2.Adam(lr=self.learning_rate))
+        self.current_model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
         self.update_target_model()
         print("Loaded model from disk")
 
