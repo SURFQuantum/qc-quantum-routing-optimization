@@ -1,0 +1,90 @@
+Meeting with Pozzi 
+
+Goal: Train an agent to solve the qubit routing problem.
+
+Structure:
+- in the training phase we generate random circuits (doesn't matter how they are paralized) with a certain density
+- it trains on a certain topology, when new topologies are introduced, the agent neural net needs to retrain.
+- You train on batches of experiences (one experience is a set of tuples of current state action, reward and next state).
+They witness a state and perform an action and receive a reward signal and learns from that.
+- Experiences are stored in a memory tree which you sample batches from to learn, this is more efficient with tensorflow
+(extension priotorized experience replaym which tries to replay from your memory to learn. It is a Deep RL)
+- you start with logical qubit allocation at a set of physical nodes randomly, random initial placement
+- After the allocating, there are series of interactions that each logical qubit has to do, 
+so maybe q1 had to interact with q2 with a cnot gate. This constitutes the state of the RL algorithm
+ -> where are the qubits? are they set on the topology? and what interaction do they have to do.
+- The agent is each timestep free to select an action to perform. 
+A set of swap gates or a set of swap gates and cnot gates( if it is physically possible to make it happen). 
+- So the agent is free to choose a swap gate it wants to do in a certain timestap. 
+The reason is to minimize the circuit depth
+ -> if ur action was any particular swap like an individual swap, the agent is not really able to determine 
+whether to do two swaps in a particul way or maybe two different selection swaps,
+- you might yeild a better depth (minimize the gate count) with the simulated annealing to optimize each timestep 
+the circuit depth and therefore it has to pick an action, (which is a set of gates, so it is aware of the metric)
+- The reward structure is as followed: There is a reward for each cnot gate that is scheduled and the further it is in the future,
+the more gates it counts. So the agent has a sense of scheduling snot gates in earlier timesteps
+
+How it works:
+The agent views the alloction or the state and views the snot gates that are currently being carried out, 
+so in the first timestep if there is a cnot gate that is possible, then they will be locked immediatly and
+the agent has to select some swap gates of the remaining qubits that are not involved in the cnot gates. 
+Thats where the simulated annealing comes in -> We train a model and we try to carry out the routing. 
+The state representation goes through a function that computes a feature representation, 
+it condenses the state in a fixed length vector of distances (how many qubits do I have to go through). 
+The first entry of the vector is the number of qubits that are one hop away from their target
+and the second entry is the number of qubits that are two hops away. We feed the vector through the neural net, 
+which outputs a single continues number which is the Q value (quality of the current state) in the context of Q-Learning.
+No quality of state and action but quality of state and next state, because the action comes from a large exponential state. 
+The simulated annealer selects a bunch of swaps to add the action in sequences on possible swap gate
+and evaluates the quality. So basically, select one swap -> look at the quality -> pick another swap -> 
+look at the quality again and the annealing evaluates the quality again for each timestep. The annealing 
+encourages the exploration of the state space and decreases the temperature so you end up exploring less and less till 
+you end up only adding a swap gate when it is benefitting the quality. So in short:
+The neural net learns a quality function and then simulated annealing constructs the action that is best to carry out in that step 
+by invoking the neural net many times to try and optimize. Qualities come out with the highest 
+possible q for a given state. Onces we select an action, we carry out and perform the swap and we get a new state and do it all again. 
+
+Actual routing is different from training, because you start with an untrained model with random actions as the neural net learns, 
+we start doing the simulated annealing and train on mini batches from the memory.
+
+
+Useful to look at:
+- papers about optimizing intial placement procedure, because there are some circuits where most qubits dont need to move that much. 
+- Complex state representation in deep learning aspect did not improve the performance of the neural net but by simplifying the 
+feature representation it did (so basically helping the neural net a bit)
+- decreasing the batch size of the training, because it is a bit slow
+- Have some systematic stopping condition where you check if the performance doesn't 
+improve at a certain point of training with all the circuits (100 training circuits)
+so the neural net learns a quality function and then simulated annealing construction the action that is best to carried out 
+in that step by invoking the nn many times to try and optimize q's come out with the highest possible q for a given state.
+
+for the code:
+(perhaps install tensorflow-gpu)
+agent; paired_state_agent is where the agent learns
+annealers; pair_state_annealer is what I should check
+benchmarks: where u run the actual code, random-, realistic-, multi-, and grid-benchmarki. 
+environment: capture state reprenstation and keeps track of where the qubits are. can play with the rewards in environment.py 
+there is a reward for decreasing distance, larger rewards make the cnot possible, in ibm tokyo it generates a topology based on the hardcoded links,
+rigetti as well but is more complicated
+
+models folder where models will be saved automatically when you train them
+othersystems: are implementdation of other benchmarks and routing circuits tket is from cambridge
+
+utils: visualization it generates kind of graphical representation of the different steps of the 
+routing procudre and what interactions and swaps are about to happen
+
+
+expeirecedb is to store the sequence of experience so when you're running benchmark and 
+save it to a path and write a path first save an experience and the change cqc_scaling_depth
+
+circuit_tools is for calculation of the depth
+
+in realistic_test_set_benchmark.py:
+should_train = false it start carry out benchmark
+should_train = true it would train models    
+run benchmark.realistic_test_set_benchmark.py
+
+with cpu count it runs on the amount of nodes available
+
+it trains 5 models and saves them in the model folder and call them random_circuits_ and 
+shuffles the realistic test set a few times and take an average of the answer

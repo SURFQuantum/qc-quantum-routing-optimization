@@ -23,7 +23,7 @@ should_train = True
 def train_model_on_random_circuits(model_number):
     model_name = "random_circuits_" + str(model_number)
 
-    training_circuit_generation_function = lambda: generate_completely_random_circuit(20, 50).to_dqn_rep()
+    training_circuit_generation_function = lambda: generate_completely_random_circuit(2, 5).to_dqn_rep()
 
     environment = IBMQ20Tokyo(training_circuit_generation_function())
     agent = DQNAgent(environment)

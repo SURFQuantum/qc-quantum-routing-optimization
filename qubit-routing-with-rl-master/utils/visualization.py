@@ -159,8 +159,8 @@ class StateVisualizer:
 state_viz = StateVisualizer(6, Rigetti19QAcorn)
 db = ExperienceDB()
 
-#changed to write_to_disk instead of load_to_disk
-db.write_to_disk("cqc_scaling_with_depth")
+
+db.load_to_disk("cqc_scaling_with_depth")
 db.display_experience(1)
 experience_number = 0
 #
