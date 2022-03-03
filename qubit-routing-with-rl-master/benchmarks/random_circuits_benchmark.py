@@ -34,7 +34,7 @@ def train_model_on_random_circuits(model_number):
     agent = DQNAgent(environment)
 
     train_model(environment, agent, training_episodes=training_episodes, circuit_generation_function=training_circuit_generation_function, should_print=False)
-    agent.save_model(model_name)
+    agent.load_model(model_name)
 
 def perform_run(n_gates, model_number):
     model_name = "random_circuits_" + str(model_number)
@@ -82,6 +82,8 @@ for i in range(repeats):
 random.shuffle(inputs)
 
 if __name__ == '__main__':
+    # Warning handler added to remove the ndarry from ragged nested sequences warning
+    np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
     p = Pool(cpu_count())
 
     if should_train:

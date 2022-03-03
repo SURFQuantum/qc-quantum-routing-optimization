@@ -26,7 +26,7 @@ should_train = False
 test_set_circuits = import_test_set()
 
 def train_model_on_random_circuits(model_number):
-    model_name = "random_circuits_" + str(model_number)
+    model_name = "realistic_circuits_" + str(model_number)
 
     training_circuit_generation_function = lambda: generate_completely_random_circuit(16, 50).to_dqn_rep()
 
@@ -37,7 +37,7 @@ def train_model_on_random_circuits(model_number):
     agent.save_model(model_name)
 
 def perform_run(initial_locations, model_number):
-    model_name = "random_circuits_" + str(model_number)
+    model_name = "realistic_circuits_" + str(model_number)
 
     start_time = time_module.clock()
 
