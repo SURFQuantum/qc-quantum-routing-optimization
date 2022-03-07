@@ -5,13 +5,13 @@ from environments.environment import Environment
 class IBMQ20Tokyo(Environment):
 
     def __init__(self, circuit, qubit_locations=None):
-        topology = self.generate_grid_topology(4, 5)
+        topology = self.generate_IBM_topology(4, 5)
         self.adjust_topology(topology)
         super().__init__(topology, circuit, qubit_locations)
         self.rows = 4
         self.cols = 5
 
-    def generate_grid_topology(self, rows, columns):
+    def generate_IBM_topology(self, rows, columns):
         topology = [[0] * (rows*columns) for _ in range(0,rows*columns)]
 
         for i in range(0,rows):
