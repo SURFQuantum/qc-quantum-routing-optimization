@@ -6,8 +6,39 @@ This repository contains code for a qubit routing procedure that makes use of RL
 
 Before quantum circuits can be executed on quantum architectures, they must be be modified to satisfy the contrains of the target topology. Specifically, a quantum architecture has a connectivity graph, consisting of physical qubits ("nodes") and links between them. (Logical) qubits inhabit the nodes, and two-qubit gates may only occur between qubits on adjacent nodes in the topology. SWAP gates must be inserted to move the qubits and satisfy such constraints - this process is known as "routing".
 
-This project uses RL to perform the task of routing qubits. For more details, please see the above paper.
+This project uses RL to perform the task of routing qubits. 
 
+![alt text](https://github.com/Lizaterdag/quantum-routing-optimisation/blob/main/img/RL.png)
+
+The agent views the state: which represents the initial location of the qubit, its interaction with another logical qubit, and if it is already possible to carry out a CNOT gate immediatly.
+
+![alt text](https://github.com/Lizaterdag/quantum-routing-optimisation/blob/main/img/topology.png)
+
+![alt text](https://github.com/Lizaterdag/quantum-routing-optimisation/blob/main/img/circuit.png)
+
+If you consider the topology and circuit as an example, then you can see that some of these interactions are not possible (CNOT0,2 and CNOT1,3). These qubits need to be moved. The SWAP operation is used for this.
+
+
+![alt text](https://github.com/Lizaterdag/quantum-routing-optimisation/blob/main/img/swapcircuit.png)
+
+
+
+the agent has to select some swap gates of the remaining qubits that are not involved in the cnot gates. 
+Thats where the simulated annealing comes in -> We train a model and we try to carry out the routing. 
+The state representation goes through a function that computes a feature representation, 
+it condenses the state in a fixed length vector of distances (how many qubits do I have to go through). 
+The first entry of the vector is the number of qubits that are one hop away from their target
+and the second entry is the number of qubits that are two hops away. We feed the vector through the neural net, 
+which outputs a single continues number which is the Q value (quality of the current state) in the context of Q-Learning.
+No quality of state and action but quality of state and next state, because the action comes from a large exponential state. 
+The simulated annealer selects a bunch of swaps to add the action in sequences on possible swap gate
+and evaluates the quality. So basically, select one swap -> look at the quality -> pick another swap -> 
+look at the quality again and the annealing evaluates the quality again for each timestep. The annealing 
+encourages the exploration of the state space and decreases the temperature so you end up exploring less and less till 
+you end up only adding a swap gate when it is benefitting the quality. So in short:
+The neural net learns a quality function and then simulated annealing constructs the action that is best to carry out in that step 
+by invoking the neural net many times to try and optimize. Qualities come out with the highest 
+possible q for a given state. Onces we select an action, we carry out and perform the swap and we get a new state and do it all again. 
 
 ## Module structure
 
