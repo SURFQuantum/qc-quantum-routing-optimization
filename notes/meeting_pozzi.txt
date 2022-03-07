@@ -25,7 +25,7 @@ the circuit depth and therefore it has to pick an action, (which is a set of gat
 the more gates it counts. So the agent has a sense of scheduling snot gates in earlier timesteps
 
 How it works:
-The agent views the alloction or the state and views the snot gates that are currently being carried out, 
+The agent views the alloction or the state and views the cnot gates that are currently being carried out, 
 so in the first timestep if there is a cnot gate that is possible, then they will be locked immediatly and
 the agent has to select some swap gates of the remaining qubits that are not involved in the cnot gates. 
 Thats where the simulated annealing comes in -> We train a model and we try to carry out the routing. 
