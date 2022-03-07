@@ -60,7 +60,7 @@ For a visualization of the qubit alloction and circuit routing, one may use the 
 - The `other_systems` directory contains code for routing with other existing methods, such as Qiskit's `StochasticSwap`. These files simply wrap external library calls into a common format, for easy benchmarking.
 - The `realistic_test_set` directory contains a series of `.qasm` files that were used in the paper to benchmark the different routing methods.
 - The `utils` directory containsa a simple implementation of a PER memory tree and visualization.
-- the `models` directory is where the code stores its models after training.
+- The `models` directory is where the code stores its models after training.
 
 ## Python package versions
 
