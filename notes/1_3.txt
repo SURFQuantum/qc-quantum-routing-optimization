@@ -2,10 +2,10 @@
 
 #### Summary: Main Goal is initial placement procedure optimization
 
-[] Remove deprecaded files and stuff
-[] Change readme file (perhaps a blokschema with explanation)
-[] Adding comments to the code and creating an ERD of the code
-[] Think of an example to explain everything, like a toymodel with what is the action, reward and state
+[x] Remove deprecaded files and stuff
+[x] Change readme file (perhaps a blokschema with explanation)
+[x] Adding comments to the code and creating an UML of the code
+[x] Think of an example to explain everything, like a toymodel with what is the action, reward and state
 [] Explain to Machine Learning team the problem and receive feedback
 [] Optimizing initial placement procedure e.g. my own placement code
 [] Perhaps different annealers to see if runtime improves -> Check the impace, perhaps better quality
