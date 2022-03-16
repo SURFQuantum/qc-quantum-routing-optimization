@@ -1,0 +1,16 @@
+## Brainstorm session March 15 - state representation or other approaches 
+
+[] First step free SWAPs
+[] Map while circuit into matrix
+[] Map parts of circuit & map into nested loop
+[] constraint satisfaction problem (coloring graphs or sudoku)
+[] Monte Carlo Tree Search (tic tac toe)
+[] Termperal Difference Learning
+[] Double Q-Learning
+[] Genetic Algorithm
+
+Tips:
+- What we did on the board (vector representation etc) in thesis presentation
+- What has already been done (monte carlo i.e.)
+- Comparisson of what has already been done (monte carlo with others)
+- Example for instance with starmon 5 for qubit allocation
