@@ -36,6 +36,7 @@ def import_test_set():
 
         circuit = QubitCircuit.from_gates(16, gates)
 
+
         circuits.append(circuit)
 
         if i % int(len(qasm_files) / 3) == 0:

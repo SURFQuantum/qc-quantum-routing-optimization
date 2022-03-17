@@ -1,5 +1,8 @@
 import random
 from qiskit import QuantumCircuit
+import os
+import warnings
+
 
 
 class Circuit:
@@ -27,7 +30,7 @@ class Circuit:
 
     @staticmethod
     def from_gates(n_qubits, gates):
-        circuit = QuantumCircuit(n_qubits)
+        circuit = Circuit(n_qubits)
         circuit.gates.extend(gates)
         return circuit
 
@@ -53,3 +56,53 @@ class Circuit:
 
         return max(d)
 
+    # TODO: remove the random qubit allocation and fix that
+    def get_circuit(self):
+        ## circuit:
+
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+        directory_path = './'
+
+        files = os.listdir(directory_path)
+        qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
+
+        circuits = []
+
+        for i, file_name in enumerate(qasm_files):
+            file_path = directory_path + file_name
+
+            if os.path.getsize(file_path) > 10000:
+                continue
+
+            qiskit_circuit = QuantumCircuit.from_qasm_file(file_path)
+
+            gates = []
+
+            for gate_obj, qubits, _ in qiskit_circuit.data:
+                if len(qubits) > 1:
+                    if gate_obj.__class__.__name__ not in ["CnotGate", "CXGate"]:
+                        exit("Non-cnot gate (" + gate_obj.__class__.__name__ + ") found for circuit: " + str(file_name))
+
+                    gate = (qubits[0].index, qubits[1].index)
+
+                    gates.append(gate)
+                    #[(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
+
+            circuit = Circuit.from_gates(16, gates)
+            circuits.append(circuit)
+
+        return list(filter(lambda c: c.depth() < 200, circuits))
+
+    def circuit_matrix(self, circuit):
+        return
+
+
+circ = Circuit(16)
+circuits = list(filter(lambda c: c.depth() < 100, circ.get_circuit()))
+
+for circuit in circuits:
+    print('Circuit depth:', circuit.depth())
+    max_qubits = [max(q1, q2) for (q1, q2) in circuit.gates]
+    print('Max qubit used:', max(max_qubits)+1)
+    print()
