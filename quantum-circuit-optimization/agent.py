@@ -36,6 +36,7 @@ class State:
                 return -5
         if self.state == CNOT_SCHEDULED:
             return 1
+
         else:
             return -1
 
