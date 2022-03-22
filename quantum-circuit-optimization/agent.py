@@ -34,7 +34,7 @@ class State:
         for i in HOLE_STATE:
             if self.state == i:
                 return -5
-        if self.state == WIN_STATE:
+        if self.state == CNOT_SCHEDULED:
             return 1
 
         else:

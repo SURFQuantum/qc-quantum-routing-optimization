@@ -62,7 +62,7 @@ class Circuit:
 
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        directory_path = './'
+        directory_path = 'test_circuits/'
 
         files = os.listdir(directory_path)
         qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
@@ -81,28 +81,25 @@ class Circuit:
 
             for gate_obj, qubits, _ in qiskit_circuit.data:
                 if len(qubits) > 1:
-                    if gate_obj.__class__.__name__ not in ["CnotGate", "CXGate"]:
+                    if gate_obj.__class__.__name__ not in ["CnotGate", "CXGate", "SwapGate"]:
                         exit("Non-cnot gate (" + gate_obj.__class__.__name__ + ") found for circuit: " + str(file_name))
 
                     gate = (qubits[0].index, qubits[1].index)
 
-                    gates.append(gate)
-                    #[(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
+                    gates.append(gate) #[(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
 
-            circuit = Circuit.from_gates(16, gates)
+            circuit = Circuit.from_gates(4, gates)
             circuits.append(circuit)
-
-        return list(filter(lambda c: c.depth() < 200, circuits))
-
-    def circuit_matrix(self, circuit):
-        return
+        return gates
+        # return list(filter(lambda c: c.depth() < 200, circuits))
 
 
-circ = Circuit(16)
-circuits = list(filter(lambda c: c.depth() < 100, circ.get_circuit()))
-
-for circuit in circuits:
-    print('Circuit depth:', circuit.depth())
-    max_qubits = [max(q1, q2) for (q1, q2) in circuit.gates]
-    print('Max qubit used:', max(max_qubits)+1)
-    print()
+# Finding out the circuit depth and max qubit used, does into account parallel routing
+# circ = Circuit(16)
+# circuits = list(filter(lambda c: c.depth() < 100, circ.get_circuit()))
+#
+# for circuit in circuits:
+#     print('Circuit depth:', circuit.depth())
+#     max_qubits = [max(q1, q2) for (q1, q2) in circuit.gates]
+#     print('Max qubit used:', max(max_qubits)+1)
+#     print()
