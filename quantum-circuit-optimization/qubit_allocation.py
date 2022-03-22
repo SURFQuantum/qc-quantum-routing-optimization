@@ -37,8 +37,8 @@ class Allocation:
 
         return connectivity_set
 
-# a = Allocation()
-# a.qubit_allocation
-# a.connectivity()
+a = Allocation()
+a.qubit_allocation
+a.connectivity()
 
 
