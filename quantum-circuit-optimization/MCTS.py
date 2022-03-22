@@ -8,16 +8,11 @@ def monte_carlo_tree_search(root):
     # return best_child(root)
     return
 
-
-# function for node traversal
-def traverse(node):
-    # while fully_expanded(node):
-    #     node = best_uct(node)
-    #
-    # # in case no children are present / node is terminal
-    # return pick_unvisited(node.children) or node
+def selection(parent_node, child_node):
+    # receives iteration
+    # choosing child node based on Upper Confidence Bound
+    # UCB(node i) = (mean node value) + confidence value sqrt(log num visits parent / num visits of node i)
     return
-
 
 # function for the result of the simulation
 def rollout(node):
