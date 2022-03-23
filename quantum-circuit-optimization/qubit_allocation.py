@@ -35,7 +35,7 @@ class Allocation:
                 connectivity_set.append((obj, topology[i - 1]))
                 connectivity_set.append((obj, topology[i + 1]))
 
-        return connectivity_set # [[0, 1], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2]]
+        return connectivity_set # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
 
 a = Allocation()
 a.qubit_allocation
