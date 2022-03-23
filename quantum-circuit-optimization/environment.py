@@ -1,4 +1,3 @@
-import qubit_allocation
 from qubit_allocation import Allocation
 from circuit import Circuit
 
@@ -10,12 +9,15 @@ class Environment:
         # print(self.qubits)
         self.topology = allocation_class.topology
         # print(self.topology)
-        self.circuit = circuit_class.get_circuit()  # [(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
+        self.gates = circuit_class.get_circuit()  # [(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
         # print(self.circuit)
-        self.connectivity = allocation_class.connectivity()  # [[0, 1], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2]]
+        self.connectivity = allocation_class.connectivity()  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
         # print(self.connectivity)
+        self.schedule = False
 
+    # Forgot why I needed this, still keeping it for now
     def circuit_matrix(self):
+
         #   |q0 |q1 |q2 |q3
         # ------------------
         # q0| 0 | 1 | 0 | 0
@@ -36,22 +38,31 @@ class Environment:
         # ------------------
         # q3| 12| 13| 14| 15
 
-        # [0,1,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0]
-
-        circuit_matrix = [0] * (pow(self.qubits, 2))
-        count = 0
+        # Sort the connectivities
         connectivity = sorted(self.connectivity, key=lambda x: x[0], reverse=False)
+        dict = {}
 
-        #TODO: fix circuit matrix
-        # for i, obj in enumerate(connectivity):
-        #     for j in range(len(connectivity)):
-        #         if obj[0] == i:
-        #             if obj[1] == i+1:
-        #                 print(obj)
-        #                 break
-        #         else:
-        #             print(i)
-        return
+        # check whether a connection exists
+        for i in range(self.qubits):
+            for j in range(self.qubits):
+                tup = (i, j)
+                if tup in connectivity:
+                    dict[tup] = 1
+                else:
+                    dict[tup] = 0
+        print(dict)  # {(0, 0): 0, (0, 1): 1, (0, 2): 0, (0, 3): 0, (1, 0): 1, (1, 1): 0, (1, 2): 1, (1, 3): 0, (2, 0): 0,
+                     # (2, 1): 1, (2, 2): 0, (2, 3): 1, (3, 0): 0, (3, 1): 0, (3, 2): 1, (3, 3): 0}
+
+        circuit_vector = list(dict.values())  # [0,1,0,0,1,0,1,0,0,1,0,1,0,0,0,1,0]
+        print(circuit_vector)
+
+        return circuit_vector
+
+    # Gate should be a tuple
+    def circuit_connectivity_compare(self, gate):
+        if gate in self.connectivity:
+            self.schedule = True
+        return self.schedule
 
 
 b = Allocation()
@@ -59,5 +70,5 @@ b.qubit_allocation
 
 c = Circuit(4)
 a = Environment(b, c)
-
-a.circuit_matrix()
+test = (0, 2)
+a.circuit_connectivity_compare(test)

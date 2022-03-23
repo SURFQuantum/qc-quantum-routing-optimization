@@ -56,9 +56,8 @@ class Circuit:
 
         return max(d)
 
-    # TODO: remove the random qubit allocation and fix that
     def get_circuit(self):
-        ## circuit:
+        # Turning circuit into a list with gate connectivities
 
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
