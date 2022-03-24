@@ -62,54 +62,67 @@ class Circuit:
 
         directory_path = 'test_circuits/'
 
-        files = os.listdir(directory_path)
-        qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
+        file = os.listdir(directory_path)
 
         circuits = []
-        count = 1
 
-        for i, file_name in enumerate(qasm_files):
-            file_path = directory_path + file_name
+        file_name = 'test_circuits/test.qasm'
+        for file_line in file:
+            file_path = directory_path + file_line
 
             if os.path.getsize(file_path) > 10000:
                 continue
 
-            qiskit_circuit = QuantumCircuit.from_qasm_file(file_path)
+            # TODO: read lines from file instead of from_qasm_file
+            qiskit_circuit = QuantumCircuit.from_qasm_file(file_name)
 
+            for elem in qiskit_circuit:
+                print(elem)
             gates = {}
 
+            used_qbits = []
+
             timestep = {}
+            count = 1
+
+            NUM_GATES = 4
 
             # TODO: fix a format like {1:{(0,1):'CNOT',(3,2):'CNOT'},2:{(0,1):'SWAP,(2,3):'SWAP},3:{},4:{},5:{}} etc
             for gate_obj, qubits, _ in qiskit_circuit.data:
-                if len(qubits) > 1:
-                    if gate_obj.__class__.__name__ not in ["CnotGate", "CXGate", "SwapGate"]:
-                        exit("Non-cnot gate (" + gate_obj.__class__.__name__ + ") found for circuit: " + str(file_name))
+                print(gate_obj, qubits)
+                if len(qubits) <= 1:
+                    continue
 
-                    print(gate_obj.__class__.__name__)
-                    if gate_obj.__class__.__name__ == "SwapGate":
-                        gate = (qubits[0].index, qubits[1].index)
-                        print(qubits[0].index)
-                        if qubits[0].index or qubits[1].index not in q:
-                            gates[gate] = 'SWAP'
-                            q.append(qubits[0].index)
-                            q.append(qubits[1].index)
+                from qiskit.circuit.library import CXGate
+                from sympy.physics.quantum.gate import CNotGate
+                from qiskit.circuit.library import SwapGate
 
-                    else:
-                        gate = (qubits[0].index, qubits[1].index)
-                        print(qubits[0].index)
-                        if qubits[0].index or qubits[1].index not in q:
-                            gates[gate] = 'CNOT'
-                            q.append(qubits[0].index)
-                            q.append(qubits[1].index)
+                if not isinstance(gate_obj, (CXGate, CNotGate, SwapGate)):
+                    raise ValueError(f"Non-CNOT gate {gate_obj.name} found in circuit: {str(file_line)}")
 
-                    print(q)
-                    timestep[count] = gates
-                    print(timestep)
-                    if len(q) == 4:
-                        q = []
-                        count += 1
+                q1_index, q2_index = qubits[0].index, qubits[1].index
+                gate = (q1_index, q2_index)
 
+                if q1_index in used_qbits or q2_index in used_qbits:  # FIXME: check dit even lol
+                    count += 1
+                    used_qbits = [q1_index, q2_index]
+                    gates[gate] = ('SWAP' if isinstance(gate_obj,
+                                                        SwapGate) else 'CNOT')  # Implicitly assuming CNOT if not SWAPgate
+                    print(used_qbits)
+                else:
+                    gates[gate] = ('SWAP' if isinstance(gate_obj,
+                                                        SwapGate) else 'CNOT')  # Implicitly assuming CNOT if not SWAPgate
+                    used_qbits.append(q1_index)
+                    used_qbits.append(q2_index)
+                    print(used_qbits)
+
+                if len(used_qbits) == NUM_GATES:
+                    used_qbits, gates = [], {}
+                    count += 1
+
+                timestep[count] = gates
+
+            print(timestep)
             circuit = Circuit.from_gates(4, gates)
             circuits.append(circuit)
         return gates
@@ -117,7 +130,7 @@ class Circuit:
 
 
 # Finding out the circuit depth and max qubit used, does into account parallel routing
-circ = Circuit(16)
+circ = Circuit(4)
 circ.get_circuit()
 
 # circuits = list(filter(lambda c: c.depth() < 100, circ.get_circuit()))
