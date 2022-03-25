@@ -9,7 +9,7 @@ class Environment:
         # print(self.qubits)
         self.topology = allocation_class.topology
         # print(self.topology)
-        self.gates = circuit_class.get_circuit()  # [(0, 1), (3, 2), (3, 0), (0, 2), (1, 2), (1, 0), (2, 3)]
+        self.gates = circuit_class.get_circuit()  # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         # print(self.circuit)
         self.connectivity = allocation_class.connectivity()  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
         # print(self.connectivity)
@@ -58,10 +58,12 @@ class Environment:
 
         return circuit_vector
 
-    # Gate should be a tuple
+
     def circuit_connectivity_compare(self, gate):
-        if gate in self.connectivity:
+        gate_connection = (gate[0], gate[1])
+        if gate_connection in self.connectivity:
             self.schedule = True
+        print(self.schedule)
         return self.schedule
 
 
@@ -70,5 +72,7 @@ b.qubit_allocation
 
 c = Circuit(4)
 a = Environment(b, c)
-test = (0, 2)
+test = [0, 1, 0]
+a.circuit_matrix()
+
 a.circuit_connectivity_compare(test)

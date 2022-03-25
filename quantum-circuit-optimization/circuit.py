@@ -99,7 +99,7 @@ class Circuit:
 
             circuit = Circuit.from_gates(4, gates)
             circuits.append(circuit)
-            print(gates)
+            #print(gates)
         return gates
 
 # Finding out the circuit depth and max qubit used, does into account parallel routing
