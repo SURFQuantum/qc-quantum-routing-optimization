@@ -2,6 +2,9 @@ import random
 from qiskit import QuantumCircuit
 import os
 import warnings
+from qiskit.circuit.library import CXGate
+from sympy.physics.quantum.gate import CNotGate
+from qiskit.circuit.library import SwapGate
 
 
 class Circuit:
@@ -76,58 +79,28 @@ class Circuit:
             # TODO: read lines from file instead of from_qasm_file
             qiskit_circuit = QuantumCircuit.from_qasm_file(file_name)
 
-            for elem in qiskit_circuit:
-                print(elem)
-            gates = {}
+            gates = []
+            table = {'cx': 0, 'swap': 1}
 
-            used_qbits = []
-
-            timestep = {}
-            count = 1
-
-            NUM_GATES = 4
-
-            # TODO: fix a format like {1:{(0,1):'CNOT',(3,2):'CNOT'},2:{(0,1):'SWAP,(2,3):'SWAP},3:{},4:{},5:{}} etc
             for gate_obj, qubits, _ in qiskit_circuit.data:
-                print(gate_obj, qubits)
                 if len(qubits) <= 1:
                     continue
-
-                from qiskit.circuit.library import CXGate
-                from sympy.physics.quantum.gate import CNotGate
-                from qiskit.circuit.library import SwapGate
 
                 if not isinstance(gate_obj, (CXGate, CNotGate, SwapGate)):
                     raise ValueError(f"Non-CNOT gate {gate_obj.name} found in circuit: {str(file_line)}")
 
-                q1_index, q2_index = qubits[0].index, qubits[1].index
-                gate = (q1_index, q2_index)
+                q1, q2 = qubits[0].index, qubits[1].index
 
-                if q1_index in used_qbits or q2_index in used_qbits:  # FIXME: check dit even lol
-                    count += 1
-                    used_qbits = [q1_index, q2_index]
-                    gates[gate] = ('SWAP' if isinstance(gate_obj,
-                                                        SwapGate) else 'CNOT')  # Implicitly assuming CNOT if not SWAPgate
-                    print(used_qbits)
-                else:
-                    gates[gate] = ('SWAP' if isinstance(gate_obj,
-                                                        SwapGate) else 'CNOT')  # Implicitly assuming CNOT if not SWAPgate
-                    used_qbits.append(q1_index)
-                    used_qbits.append(q2_index)
-                    print(used_qbits)
+                for key, val in table.items():
+                    if key == gate_obj.name:
+                        gate = [q1, q2, val]
 
-                if len(used_qbits) == NUM_GATES:
-                    used_qbits, gates = [], {}
-                    count += 1
+                gates.append(gate)
 
-                timestep[count] = gates
-
-            print(timestep)
             circuit = Circuit.from_gates(4, gates)
             circuits.append(circuit)
+            print(gates)
         return gates
-        # return list(filter(lambda c: c.depth() < 200, circuits))
-
 
 # Finding out the circuit depth and max qubit used, does into account parallel routing
 circ = Circuit(4)
