@@ -17,7 +17,7 @@ from circuit import Circuit
 
 # class state defines the board and decides reward, end and next position
 class State:
-    def __init__(self, environment, circuit, agent):
+    def __init__(self, circuit, agent):
         self.circuit = circuit.get_circuit()  # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         self.isEnd = False
         self.length = 0
