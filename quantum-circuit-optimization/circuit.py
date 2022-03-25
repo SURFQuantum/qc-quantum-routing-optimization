@@ -67,8 +67,6 @@ class Circuit:
 
         file = os.listdir(directory_path)
 
-        circuits = []
-
         file_name = 'test_circuits/test.qasm'
         for file_line in file:
             file_path = directory_path + file_line
@@ -97,9 +95,9 @@ class Circuit:
 
                 gates.append(gate)
 
-            circuit = Circuit.from_gates(4, gates)
-            circuits.append(circuit)
-            #print(gates)
+            # circuit = Circuit.from_gates(4, gates)
+            # circuits.append(circuit)
+            # print(circuits)
         return gates
 
 # Finding out the circuit depth and max qubit used, does into account parallel routing

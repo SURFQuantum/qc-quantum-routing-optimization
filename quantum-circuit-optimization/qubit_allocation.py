@@ -1,5 +1,6 @@
 import random
 
+
 class Allocation:
 
     def __init__(self):
@@ -8,7 +9,7 @@ class Allocation:
         self.topology = []
         self.qubits = 4
 
-    @property
+
     def qubit_allocation(self):
         # TODO: remove the random qubit allocation and fix that
         # self.topology = (random.sample(range(self.qubits), 4))
@@ -18,7 +19,6 @@ class Allocation:
         for i in range(self.qubits):
             self.topology.append(i)
 
-        return self.topology
 
     def connectivity(self):
 
@@ -29,16 +29,15 @@ class Allocation:
 
             if i == 0:
                 connectivity_set.append((obj, topology[i + 1]))
-            elif i == (len(topology)-1):
+            elif i == (len(topology) - 1):
                 connectivity_set.append((obj, topology[i - 1]))
             else:
                 connectivity_set.append((obj, topology[i - 1]))
                 connectivity_set.append((obj, topology[i + 1]))
+        print(topology)
+        return connectivity_set  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
 
-        return connectivity_set # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
 
 a = Allocation()
-a.qubit_allocation
+a.qubit_allocation()
 a.connectivity()
-
-

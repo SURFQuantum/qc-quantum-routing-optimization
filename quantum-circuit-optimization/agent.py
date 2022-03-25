@@ -11,105 +11,57 @@ from keras.optimizer_v2.adamax import Adamax
 from keras.optimizers import adam_v2
 from keras.models import model_from_json
 
-# set the rows and columns length
-BOARD_ROWS = 5
-BOARD_COLS = 5
-
-# initalise start, win and lose states
-START = (0, 0)
-WIN_STATE = (4, 4)
-HOLE_STATE = [(1, 0), (3, 1), (4, 2), (1, 3)]
+from environment import Environment
+from circuit import Circuit
 
 
 # class state defines the board and decides reward, end and next position
 class State:
-    def __init__(self, state=START):
-        # initalise the state to start and end to false
-        self.state = state
+    def __init__(self, environment, circuit, agent):
+        self.circuit = circuit.get_circuit()  # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         self.isEnd = False
+        self.length = 0
+        self.scheduled_gates = agent.scheduled_gates
+        self.action = agent.action()
 
     # TODO: define new reward system
-    def getReward(self):
-        # give the rewards for each state -5 for loss, +1 for win, -1 for others
-        for i in HOLE_STATE:
-            if self.state == i:
-                return -5
-        if self.state == CNOT_SCHEDULED:
-            return 1
+    def get_reward(self):
+        return 0
 
-        else:
-            return -1
+    def circuit_length(self, circuit):
+        self.length = len(circuit)
 
-    # TODO: Define new end
-    def isEndFunc(self):
-        # set state to end if win/loss
-        if (self.state == WIN_STATE):
+    # TODO: check this function
+    def is_end_circuit(self, circuit_i):
+        if circuit_i == self.length - 1:
             self.isEnd = True
 
-        for i in HOLE_STATE:
-            if self.state == i:
-                self.isEnd = True
-
     # TODO: write new action
-    def nxtPosition(self, action):
-        # set the positions from current action - up, down, left, right
-        if action == 0:
-            nxtState = (self.state[0] - 1, self.state[1])  # up
-        elif action == 1:
-            nxtState = (self.state[0] + 1, self.state[1])  # down
-        elif action == 2:
-            nxtState = (self.state[0], self.state[1] - 1)  # left
-        else:
-            nxtState = (self.state[0], self.state[1] + 1)  # right
+    def next_position(self, action):
+        return 0
 
-        # check if next state is possible
-        if (nxtState[0] >= 0) and (nxtState[0] <= 4):
-            if (nxtState[1] >= 0) and (nxtState[1] <= 4):
-                # if possible change to next state
-                return nxtState
-                # Return current state if outside grid
-        return self.state
+    def state(self, circuit_i):
+        location_qubit = circuit_i[0]
+        interaction_qubit = circuit_i[1]
+        scheduled_gates = self.scheduled_gates
+        #TODO: find proper way to calculate distance based on topology
+        distance = circuit_i[1] - circuit_i[0]
 
-    # class agent to implement reinforcement learning through grid
+        state = [location_qubit, interaction_qubit, scheduled_gates, distance]
+        return state
 
 
 class Agent:
 
-    def __init__(self):
+    def __init__(self, environment):
         # inialise states and actions
-        self.states = []
-        self.actions = []  # TODO: new action representation
-        self.State = State()
-        # set the learning and greedy values
-        self.alpha = 0.5
-        self.gamma = 0.9
-        self.epsilon = 0.1
-        self.isEnd = self.State.isEnd
-
-        # array to retain reward values for plot
-        self.plot_reward = []
-
-        # initalise Q values as a dictionary for current and new
-        self.Q = {}
-        self.new_Q = {}
-        # initalise rewards to 0
-        self.rewards = 0
-
-        self.learning_rate = 0.001
-
-        # initalise all Q values across the board to 0, print these values
-        for i in range(BOARD_ROWS):
-            for j in range(BOARD_COLS):
-                for k in range(len(self.actions)):
-                    self.Q[(i, j, k)] = 0
-                    self.new_Q[(i, j, k)] = 0
-
-        print(self.Q)
+        self.allowSchedule = environment.circuit_connectivity_compare()  # Boolean
+        self.scheduled_gates = []
 
     def model(self):
 
         # TODO: create vector where length = input_size
-
+        input_size = 3
         model = Sequential()
         model.add(Dense(10, input_dim=input_size, activation='relu'))
         model.add(Dense(10, activation='relu'))
@@ -121,117 +73,19 @@ class Agent:
         return model
 
     # method to choose action with Epsilon greedy policy, and move to next state
-    def Action(self):
-        # random value vs epsilon
-        rnd = random.random()
-        # set arbitraty low value to compare with Q values to find max
-        mx_nxt_reward = -10
-        action = None
+    def action(self):
+        return
 
-        # 9/10 find max Q value over actions
-        if (rnd > self.epsilon):
-            # iterate through actions, find Q  value and choose best
-            for k in self.actions:
+    def schedule_gate(self,gate):
+        if self.allowSchedule(gate):
+            self.scheduled_gates.append(gate)
 
-                i, j = self.State.state
-
-                nxt_reward = self.Q[(i, j, k)]
-
-                if nxt_reward >= mx_nxt_reward:
-                    action = k
-                    mx_nxt_reward = nxt_reward
-
-        # else choose random action
-        else:
-            action = np.random.choice(self.actions)
-
-        # select the next state based on action chosen
-        position = self.State.nxtPosition(action)
-        return position, action
-
-    # Q-learning Algorithm
-    def Q_Learning(self, episodes):
-        x = 0
-        # iterate through best path for each episode
-        while (x < episodes):
-            # check if state is end
-            if self.isEnd:
-                # get current rewrard and add to array for plot
-                reward = self.State.getReward()
-                self.rewards += reward
-                self.plot_reward.append(self.rewards)
-
-                # get state, assign reward to each Q_value in state
-                i, j = self.State.state
-                for a in self.actions:
-                    self.new_Q[(i, j, a)] = round(reward, 3)
-
-                # reset state
-                self.State = State()
-                self.isEnd = self.State.isEnd
-
-                # set rewards to zero and iterate to next episode
-                self.rewards = 0
-                x += 1
-            else:
-                # set to arbitrary low value to compare net state actions
-                mx_nxt_value = -10
-                # get current state, next state, action and current reward
-                next_state, action = self.Action()
-                i, j = self.State.state
-                reward = self.State.getReward()
-                # add reward to rewards for plot
-                self.rewards += reward
-
-                # iterate through actions to find max Q value for action based on next state action
-                for a in self.actions:
-                    nxtStateAction = (next_state[0], next_state[1], a)
-                    q_value = (1 - self.alpha) * self.Q[(i, j, action)] + self.alpha * (
-                            reward + self.gamma * self.Q[nxtStateAction])
-
-                    # find largest Q value
-                    if q_value >= mx_nxt_value:
-                        mx_nxt_value = q_value
-
-                # next state is now current state, check if end state
-                self.State = State(state=next_state)
-                self.State.isEndFunc()
-                self.isEnd = self.State.isEnd
-
-                # update Q values with max Q value for next state
-                self.new_Q[(i, j, action)] = round(mx_nxt_value, 3)
-
-            # copy new Q values to Q table
-            self.Q = self.new_Q.copy()
-        # print final Q table output
-        print(self.Q)
-
-    # plot the reward vs episodes
-    def plot(self, episodes):
-
-        plt.plot(self.plot_reward)
-        plt.show()
-
-    # iterate through the board and find largest Q value in each, print output
-    def showValues(self):
-        for i in range(0, BOARD_ROWS):
-            print('-----------------------------------------------')
-            out = '| '
-            for j in range(0, BOARD_COLS):
-                mx_nxt_value = -10
-                for a in self.actions:
-                    nxt_value = self.Q[(i, j, a)]
-                    if nxt_value >= mx_nxt_value:
-                        mx_nxt_value = nxt_value
-                out += str(mx_nxt_value).ljust(6) + ' | '
-            print(out)
-        print('-----------------------------------------------')
+    #TODO: print out tree of MCTS
+    def show_tree(self):
+        return
 
 
 if __name__ == "__main__":
     # create agent for 10,000 episdoes implementing a Q-learning algorithm plot and show values.
     ag = Agent()
-    episodes = 1000
-    ag.Q_Learning(episodes)
-    ag.plot(episodes)
-    ag.showValues()
+
