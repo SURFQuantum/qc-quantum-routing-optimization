@@ -11,7 +11,6 @@ class Circuit:
 
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
-        self.gates = []
 
     def generate_completely_random_circuit(self, n_qubits, n_gates):
 
