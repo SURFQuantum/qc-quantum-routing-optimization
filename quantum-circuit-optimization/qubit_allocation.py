@@ -34,7 +34,7 @@ class Allocation:
             else:
                 connectivity_set.append((obj, topology[i - 1]))
                 connectivity_set.append((obj, topology[i + 1]))
-        print(connectivity_set)
+        #print(connectivity_set)
         return connectivity_set  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
 
 

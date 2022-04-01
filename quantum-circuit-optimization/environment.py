@@ -71,18 +71,18 @@ class Environment:
 def is_in_connectivity(gate, connectivity):
     gate = (gate[0], gate[1])
     return gate in connectivity
-
-b = Allocation()
-b.qubit_allocation
-
-c = Circuit(4)
-a = Environment(b, c)
-test = [0, 1, 0]
-a.circuit_matrix()
-
-con = b.connectivity()
-
-is_in_connectivity(test, con)
+#
+# b = Allocation()
+# b.qubit_allocation
+#
+# c = Circuit(4)
+# a = Environment(b, c)
+# test = [0, 1, 0]
+# a.circuit_matrix()
+#
+# con = b.connectivity()
+#
+# is_in_connectivity(test, con)
 
 
 # a.circuit_connectivity_compare(test)

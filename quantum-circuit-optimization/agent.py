@@ -93,14 +93,14 @@ class Agent:
         pass
 
 
-if __name__ == "__main__":
-    # create agent for 10,000 episdoes implementing a Q-learning algorithm plot and show values.
-    c = Circuit(4)
-    all = Allocation()
-    con = all.connectivity()
-    circ = c.get_circuit()
-
-    a = Agent()
-    for i in circ:
-        print(i)
-        print(a.schedule_gate(con, i))
+# if __name__ == "__main__":
+    # # create agent for 10,000 episdoes implementing a Q-learning algorithm plot and show values.
+    # c = Circuit(4)
+    # all = Allocation()
+    # con = all.connectivity()
+    # circ = c.get_circuit()
+    #
+    # a = Agent()
+    # for i in circ:
+    #     # print(i)
+    #     a.schedule_gate(con, i)
