@@ -49,6 +49,42 @@ class MCTS:
         ucb = mean_reward + 2 * (sqrt(log(num_parent_visits + e + (10 ** (-6))) / (num_child_visits + 10 ** (-1))))
         return ucb
 
+    def swap_schedule(self, i, end_state, gate):
+        child_node = self.state
+        # size = len(child_node)
+        #
+        # child_node[size] = i
+        a, b, _ = i
+
+        if gate[0] > gate[1]:
+            distance = gate[0] - gate[1]
+        else:
+            distance = gate[1] - gate[0]
+
+        new_gate = [gate[0], gate[1]]
+
+        for x in range(len(new_gate)):
+            if new_gate[x] == a:
+                new_gate[x] = b
+            elif new_gate[x] == b:
+                new_gate[x] = a
+
+        if new_gate[0] > new_gate[1]:
+            new_distance = new_gate[0] - new_gate[1]
+        else:
+            new_distance = new_gate[1] - new_gate[0]
+
+        # Reward for improving the CNOT
+        if new_distance < distance:
+            reward = 5
+        elif new_distance == 0:
+            reward = 100
+            end_state = True
+        else:
+            reward = -1
+
+        return end_state, reward, new_gate
+
     def selection(self, gate):
         # receives iteration
         # choosing child node based on Upper Confidence Bound
@@ -62,50 +98,22 @@ class MCTS:
         # instead of all the states in the list at the end of the iteration
         child_node = self.state
         action = self.action
-        size = len(child_node)
+
         child_node.append(0)
         reward = 1
         timestep = 0
         parent_num = 0
         end_state = False
 
-        while end_state == False:
+        while not end_state:
 
             for i in action:
                 timestep += 1
-                parent_num +=1
-                #print(f'action i {i}')
+                parent_num += 1
+                # print(f'action i {i}')
                 root = self.ucb(self.root)
-                #print(f'root ucb: {root}')
-                child_node[size] = i
-                a, b, _ = i
-
-                if gate[0] > gate[1]:
-                    distance = gate[0] - gate[1]
-                else:
-                    distance = gate[1] - gate[0]
-
-                new_gate = [gate[0], gate[1]]
-
-                for x in range(len(new_gate)):
-                    if new_gate[x] == a:
-                        new_gate[x] = b
-                    elif new_gate[x] == b:
-                        new_gate[x] = a
-
-                if new_gate[0] > new_gate[1]:
-                    new_distance = new_gate[0] - new_gate[1]
-                else:
-                    new_distance = new_gate[1] - new_gate[0]
-
-                # Reward for improving the CNOT
-                if new_distance < distance:
-                    reward = 5
-                elif new_distance == 0:
-                    reward = 100
-                    end_state = True
-                else:
-                    reward = -1
+                # print(f'root ucb: {root}')
+                end_state, reward, new_gate = self.swap_schedule(i, end_state, gate)
 
                 node_i = {'action': i, 'reward': parent_num, 'N': 1, 'n': timestep}
 
@@ -118,11 +126,8 @@ class MCTS:
 
                 parent = random.choice(action)
 
-                print(parent)
-
-
-
-
+                #TODO: Remove True statement, temporarely placed to prevent longgggggg output
+                end_state = True
 
             # TODO: Calculation with UCB and random selecting perhaps of a branch, research something about that random selecting?
         return 0
