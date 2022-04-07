@@ -115,7 +115,7 @@ class MCTS:
                 # print(f'root ucb: {root}')
                 end_state, reward, new_gate = self.swap_schedule(i, end_state, gate)
 
-                node_i = {'action': i, 'reward': parent_num, 'N': 1, 'n': timestep}
+                node_i = {'action': i, 'reward':reward , 'N': parent_num, 'n': timestep}
 
                 child = self.ucb(node_i)
                 print(f'child ucb: {child}')
