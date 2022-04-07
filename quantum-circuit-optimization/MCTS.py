@@ -5,6 +5,9 @@ from math import log, sqrt, e
 from agent import Agent
 from circuit import Circuit
 from qubit_allocation import Allocation
+from types import SimpleNamespace
+
+import random
 
 
 class MCTS:
@@ -20,6 +23,7 @@ class MCTS:
         self.N = 0
         self.n = 0
         self.n_qubits = circuit.n_qubits
+        self.root = {'reward': 1, 'N': 1, 'n': 0}
 
     # Node is a circuit with gates, parent node should change for every action, child node is the possible action
     # coming from parent node
@@ -37,16 +41,17 @@ class MCTS:
         """
         Upper Confidence Bound for selecting the best child node
         """
+        node_i = SimpleNamespace(**node_i)
+
         mean_reward = node_i.reward
         num_parent_visits = node_i.N
         num_child_visits = node_i.n
-        ucb = mean_reward + 2 * (sqrt(log(num_parent_visits + e + (10 ** -6)) / (num_child_visits + 10 ** -10)))
+        ucb = mean_reward + 2 * (sqrt(log(num_parent_visits + e + (10 ** (-6))) / (num_child_visits + 10 ** (-1))))
         return ucb
 
     def selection(self, gate):
         # receives iteration
         # choosing child node based on Upper Confidence Bound
-        # UCB(node i) = (mean node value) + confidence value sqrt(log num visits parent / num visits of node i)
         """
         Iterate through all the child of the given state and select the one with highest UCB value
         """
@@ -59,39 +64,67 @@ class MCTS:
         action = self.action
         size = len(child_node)
         child_node.append(0)
-        for i in action:
-            child_node[size] = i
-            a, b, _ = i
+        reward = 1
+        timestep = 0
+        parent_num = 0
+        end_state = False
 
-            if gate[0] > gate[1]:
-                distance = gate[0] - gate[1]
-            else:
-                distance = gate[1] - gate[0]
+        while end_state == False:
 
-            new_gate = [gate[0], gate[1]]
+            for i in action:
+                timestep += 1
+                parent_num +=1
+                #print(f'action i {i}')
+                root = self.ucb(self.root)
+                #print(f'root ucb: {root}')
+                child_node[size] = i
+                a, b, _ = i
 
-            for x in range(len(new_gate)):
-                if new_gate[x] == a:
-                    new_gate[x] = b
-                elif new_gate[x] == b:
-                    new_gate[x] = a
+                if gate[0] > gate[1]:
+                    distance = gate[0] - gate[1]
+                else:
+                    distance = gate[1] - gate[0]
 
-            if new_gate[0] > new_gate[1]:
-                new_distance = new_gate[0] - new_gate[1]
-            else:
-                new_distance = new_gate[1] - new_gate[0]
+                new_gate = [gate[0], gate[1]]
 
-            # Reward for improving the CNOT
-            if new_distance < distance:
-                reward = 5
+                for x in range(len(new_gate)):
+                    if new_gate[x] == a:
+                        new_gate[x] = b
+                    elif new_gate[x] == b:
+                        new_gate[x] = a
 
-            else:
-                reward = -1
+                if new_gate[0] > new_gate[1]:
+                    new_distance = new_gate[0] - new_gate[1]
+                else:
+                    new_distance = new_gate[1] - new_gate[0]
 
-            print(reward)
+                # Reward for improving the CNOT
+                if new_distance < distance:
+                    reward = 5
+                elif new_distance == 0:
+                    reward = 100
+                    end_state = True
+                else:
+                    reward = -1
+
+                node_i = {'action': i, 'reward': parent_num, 'N': 1, 'n': timestep}
+
+                child = self.ucb(node_i)
+                print(f'child ucb: {child}')
+                root += child
+                print(f'new root ucb: {root}')
+
+                # random decision between childs
+
+                parent = random.choice(action)
+
+                print(parent)
 
 
-            # TODO: find a reward system and calculation with UCB and random selecting perhaps of a branch, research something about that random selecting?
+
+
+
+            # TODO: Calculation with UCB and random selecting perhaps of a branch, research something about that random selecting?
         return 0
 
     # function for the result of the simulation

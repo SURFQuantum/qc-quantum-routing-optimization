@@ -18,7 +18,7 @@ class State:
         self.scheduled_gates = agent.scheduled_gates
         self.action = agent.action()
 
-    # TODO: define new reward system
+    # TODO: get reward from MCTS
     def get_reward(self):
         return 0
 
