@@ -50,10 +50,9 @@ class MCTS:
         return ucb
 
     def swap_schedule(self, i, end_state, gate):
-        child_node = self.state
-        # size = len(child_node)
-        #
-        # child_node[size] = i
+
+        #(ADD: constraint not two swaps next to each other)
+
         a, b, _ = i
 
         if gate[0] > gate[1]:
@@ -74,14 +73,17 @@ class MCTS:
         else:
             new_distance = new_gate[1] - new_gate[0]
 
+        print(f'distance is {new_distance}')
         # Reward for improving the CNOT
         if new_distance < distance:
             reward = 5
-        elif new_distance == 0:
+        elif new_distance == 1:
             reward = 100
             end_state = True
         else:
             reward = -1
+
+        print(f'reward is {reward}')
 
         return end_state, reward, new_gate
 
@@ -92,7 +94,7 @@ class MCTS:
         Iterate through all the child of the given state and select the one with highest UCB value
         """
 
-        # get parent node and child_nodes is the one with all the calculated actions, (ADD: constraint not two swaps next to each other)
+        # get parent node and child_nodes is the one with all the calculated actions
 
         # hideously programmed, but at this point I couldnt come up with a different solution for 1 action in a state,
         # instead of all the states in the list at the end of the iteration
@@ -100,37 +102,50 @@ class MCTS:
         action = self.action
 
         child_node.append(0)
-        reward = 1
-        timestep = 0
-        parent_num = 0
-        end_state = False
 
+        timestep = 1
+        parent_num = 1
+        end_state = False
+        actions = []
         while not end_state:
 
             for i in action:
-                timestep += 1
-                parent_num += 1
                 # print(f'action i {i}')
                 root = self.ucb(self.root)
                 # print(f'root ucb: {root}')
                 end_state, reward, new_gate = self.swap_schedule(i, end_state, gate)
 
-                node_i = {'action': i, 'reward':reward , 'N': parent_num, 'n': timestep}
+                node_i = {'action': i, 'reward': reward, 'N': parent_num, 'n': timestep}
 
                 child = self.ucb(node_i)
-                print(f'child ucb: {child}')
+                # print(f'child ucb: {child}')
                 root += child
-                print(f'new root ucb: {root}')
+                # print(f'new root ucb: {root}')
 
                 # random decision between childs
+                actions.append([i, new_gate])
+            parent = random.choice(actions)
 
-                parent = random.choice(action)
+            for i in action:
+                timestep += 1
+                parent_num += 1
+                end_state, reward, new_gate = self.swap_schedule(i, end_state, new_gate)
 
-                #TODO: Remove True statement, temporarely placed to prevent longgggggg output
-                end_state = True
+                if reward == 100:
+                    final_action = [parent, i, new_gate]
+                    break
+                node_i = {'action': i, 'reward': reward, 'N': parent_num, 'n': timestep}
+                child = self.ucb(node_i)
+                # print(f'child ucb: {child}')
+                root += child
+                # print(f'new root ucb: {root}')
 
-            # TODO: Calculation with UCB and random selecting perhaps of a branch, research something about that random selecting?
-        return 0
+            a = final_action[0]
+
+            end_state = [a[0], final_action[1], final_action[2]]
+
+            print(end_state)
+        return end_state
 
     # function for the result of the simulation
     def rollout(self, node):
