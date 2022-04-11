@@ -155,15 +155,6 @@ class MCTS:
         # backpropagation(node.parent)
         return
 
-    # function for selecting the best child
-    # node with the highest number of visits
-    def best_child(self, node):
-        # pick
-        # child
-        # with the highest number of visits
-        return
-
-
     def select_child(self, root):
 
         while bool(root.children):
