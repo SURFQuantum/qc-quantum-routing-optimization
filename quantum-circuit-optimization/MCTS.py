@@ -1,5 +1,5 @@
 import itertools
-from math import log, sqrt, e
+from math import log, sqrt, e, inf
 
 # TODO: FIND SHORTEST PATH TO LEAF NODE
 from agent import Agent
@@ -10,6 +10,16 @@ from types import SimpleNamespace
 import random
 
 
+class Node:
+    def __init__(self, parent=None):
+        self.reward = 1
+        self.N = 1
+        self.n = 0
+        self.children: list[Node] = []
+        self.parent = parent
+        #self.action = action
+
+
 class MCTS:
 
     def __init__(self, agent, circuit):
@@ -18,12 +28,11 @@ class MCTS:
         # self.constraints = allocation_class.connectivity()
         self.reward = 0
         # self.action = 0  #
-        self.children = 0
         self.parent = 0
         self.N = 0
         self.n = 0
         self.n_qubits = circuit.n_qubits
-        self.root = {'reward': 1, 'N': 1, 'n': 0}
+        self.root = Node()
 
     # Node is a circuit with gates, parent node should change for every action, child node is the possible action
     # coming from parent node
@@ -41,12 +50,13 @@ class MCTS:
         """
         Upper Confidence Bound for selecting the best child node
         """
-        node_i = SimpleNamespace(**node_i)
-
-        mean_reward = node_i.reward
-        num_parent_visits = node_i.N
-        num_child_visits = node_i.n
-        ucb = mean_reward + 2 * (sqrt(log(num_parent_visits + e + (10 ** (-6))) / (num_child_visits + 10 ** (-1))))
+        # node_i = SimpleNamespace(**node_i)
+        #
+        # mean_reward = node_i.reward
+        # num_parent_visits = node_i.N
+        # num_child_visits = node_i.n
+        #wortel 2
+        ucb = node_i.reward + 2 * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
         return ucb
 
     def swap_schedule(self, i, end_state, gate):
@@ -95,56 +105,21 @@ class MCTS:
         """
 
         # get parent node and child_nodes is the one with all the calculated actions
-
-        # hideously programmed, but at this point I couldnt come up with a different solution for 1 action in a state,
-        # instead of all the states in the list at the end of the iteration
-        child_node = self.state
         action = self.action
 
-        child_node.append(0)
-
-        timestep = 1
-        parent_num = 1
         end_state = False
-        actions = []
+        for i in action:
+            self.root.children.append(i)
+
+        circuit = []
         while not end_state:
+            best_action = self.select_leaf(self.root)
 
-            for i in action:
-                # print(f'action i {i}')
-                root = self.ucb(self.root)
-                # print(f'root ucb: {root}')
-                end_state, reward, new_gate = self.swap_schedule(i, end_state, gate)
+            end_state, reward, new_gate = self.swap_schedule(best_action, end_state, gate)
 
-                node_i = {'action': i, 'reward': reward, 'N': parent_num, 'n': timestep}
+            circuit.append(new_gate)
 
-                child = self.ucb(node_i)
-                # print(f'child ucb: {child}')
-                root += child
-                # print(f'new root ucb: {root}')
-
-                # random decision between childs
-                actions.append([i, new_gate])
-            parent = random.choice(actions)
-
-            for i in action:
-                timestep += 1
-                parent_num += 1
-                end_state, reward, new_gate = self.swap_schedule(i, end_state, new_gate)
-
-                if reward == 100:
-                    final_action = [parent, i, new_gate]
-                    break
-                node_i = {'action': i, 'reward': reward, 'N': parent_num, 'n': timestep}
-                child = self.ucb(node_i)
-                # print(f'child ucb: {child}')
-                root += child
-                # print(f'new root ucb: {root}')
-
-            a = final_action[0]
-
-            end_state = [a[0], final_action[1], final_action[2]]
-
-            print(end_state)
+        print(circuit)
         return end_state
 
     # function for the result of the simulation
@@ -173,6 +148,24 @@ class MCTS:
         # child
         # with the highest number of visits
         return
+
+
+    def select_leaf(self, root):
+
+        while bool(root.children):
+            children = root.children
+            print(children)
+            best = None
+            best_ucb = inf
+            for child in children:
+                print(child)
+                ucb = self.ucb(child)
+
+                if ucb < best_ucb:
+                    best_ucb = ucb
+                    best = child
+            root = best
+        return root
 
 
 def pairwise(iterable):
