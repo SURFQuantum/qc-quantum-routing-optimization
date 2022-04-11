@@ -50,11 +50,6 @@ class MCTS:
         """
         Upper Confidence Bound for selecting the best child node
         """
-        # node_i = SimpleNamespace(**node_i)
-        #
-        # mean_reward = node_i.reward
-        # num_parent_visits = node_i.N
-        # num_child_visits = node_i.n
         #wortel 2
         ucb = node_i.reward + 2 * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
         return ucb
@@ -78,7 +73,7 @@ class MCTS:
             elif new_gate[x] == b:
                 new_gate[x] = a
         new_gate.append(0)
-        print(f' new gate in swap_schdule is {new_gate}')
+        print(f' new gate in swap_schedule is {new_gate}')
         if new_gate[0] > new_gate[1]:
             new_distance = new_gate[0] - new_gate[1]
         else:
@@ -117,7 +112,6 @@ class MCTS:
             timestep += 1
             for i in action:
                 child.action = i
-                # print(child.action)
                 end_state, reward, new_gate, act = self.swap_schedule(child.action, end_state, gate)
                 if end_state:
                     break
@@ -129,11 +123,7 @@ class MCTS:
                 gate = new_gate
 
             child = self.select_leaf(self.root)
-
             circuit.append(act)
-            #print(best_action.action)
-            # print(end_state)
-            #circuit.append(new_gate)
 
         circuit.append(gate)
         print(circuit)
@@ -175,9 +165,7 @@ class MCTS:
             best = None
             best_ucb = inf
             for child in children:
-
                 ucb = self.ucb(child)
-
                 if ucb < best_ucb:
                     best_ucb = ucb
                     best = child
