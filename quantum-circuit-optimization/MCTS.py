@@ -11,13 +11,13 @@ import random
 
 
 class Node:
-    def __init__(self, parent=None):
+    def __init__(self):
         self.reward = 1
         self.N = 1
         self.n = 0
         self.children: list[Node] = []
-        self.parent = parent
-        #self.action = action
+        self.parent = None
+        self.action = None
 
 
 class MCTS:
@@ -64,7 +64,7 @@ class MCTS:
         #(ADD: constraint not two swaps next to each other)
 
         a, b, _ = i
-
+        print(i)
         if gate[0] > gate[1]:
             distance = gate[0] - gate[1]
         else:
@@ -77,7 +77,8 @@ class MCTS:
                 new_gate[x] = b
             elif new_gate[x] == b:
                 new_gate[x] = a
-
+        new_gate.append(0)
+        print(f' new gate in swap_schdule is {new_gate}')
         if new_gate[0] > new_gate[1]:
             new_distance = new_gate[0] - new_gate[1]
         else:
@@ -85,17 +86,19 @@ class MCTS:
 
         print(f'distance is {new_distance}')
         # Reward for improving the CNOT
-        if new_distance < distance:
-            reward = 5
-        elif new_distance == 1:
+        if new_distance == 1:
             reward = 100
             end_state = True
+        elif new_distance < distance:
+            reward = 5
         else:
             reward = -1
 
         print(f'reward is {reward}')
 
-        return end_state, reward, new_gate
+        print(i)
+        return end_state, reward, new_gate, i
+
 
     def selection(self, gate):
         # receives iteration
@@ -103,22 +106,36 @@ class MCTS:
         """
         Iterate through all the child of the given state and select the one with highest UCB value
         """
-
+        circuit = []
         # get parent node and child_nodes is the one with all the calculated actions
         action = self.action
-
+        self.root.action=gate
+        child = Node()
         end_state = False
-        for i in action:
-            self.root.children.append(i)
-
-        circuit = []
+        timestep = 0
         while not end_state:
-            best_action = self.select_leaf(self.root)
+            timestep += 1
+            for i in action:
+                child.action = i
+                # print(child.action)
+                end_state, reward, new_gate, act = self.swap_schedule(child.action, end_state, gate)
+                if end_state:
+                    break
+                child.reward = reward
+                child.n = timestep
+                self.root.children.append(child)
 
-            end_state, reward, new_gate = self.swap_schedule(best_action, end_state, gate)
+            if not end_state:
+                gate = new_gate
 
-            circuit.append(new_gate)
+            child = self.select_leaf(self.root)
 
+            circuit.append(act)
+            #print(best_action.action)
+            # print(end_state)
+            #circuit.append(new_gate)
+
+        circuit.append(gate)
         print(circuit)
         return end_state
 
@@ -154,11 +171,11 @@ class MCTS:
 
         while bool(root.children):
             children = root.children
-            print(children)
+
             best = None
             best_ucb = inf
             for child in children:
-                print(child)
+
                 ucb = self.ucb(child)
 
                 if ucb < best_ucb:
