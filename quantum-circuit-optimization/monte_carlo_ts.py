@@ -1,13 +1,8 @@
 import itertools
 from math import log, sqrt, e, inf
-
-# TODO: FIND SHORTEST PATH TO LEAF NODE
 from agent import Agent
 from circuit import Circuit
 from qubit_allocation import Allocation
-from types import SimpleNamespace
-
-import random
 
 
 class Node:
@@ -18,7 +13,6 @@ class Node:
         self.children: list[Node] = []
         self.parent = None
         self.action = None
-
 
 class MCTS:
 
@@ -50,13 +44,13 @@ class MCTS:
         """
         Upper Confidence Bound for selecting the best child node
         """
-        #wortel 2
+        # wortel 2
         ucb = node_i.reward + 2 * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
         return ucb
 
     def swap_schedule(self, i, end_state, gate):
 
-        #(ADD: constraint not two swaps next to each other)
+        # (ADD: constraint not two swaps next to each other)
 
         a, b, _ = i
         print(i)
@@ -97,7 +91,6 @@ class MCTS:
         print(f'reward is {reward}')
         return end_state, reward, new_gate, i
 
-
     def selection(self, gate):
         # receives iteration
         # choosing child node based on Upper Confidence Bound
@@ -106,7 +99,7 @@ class MCTS:
         """
         circuit = []
         action = self.action
-        self.root.action=gate
+        self.root.action = gate
         child = Node()
         end_state = False
         timestep = 0
@@ -134,26 +127,26 @@ class MCTS:
 
         circuit.append(gate)
         print(circuit)
-        return end_state
+        return circuit
 
     # function for the result of the simulation
-    def rollout(self, node):
+    def rollout(self):
         # while non_terminal(node):
         #     node = rollout_policy(node)
         # return result(node)
-        return
+        pass
 
     # function for randomly selecting a child node
-    def rollout_policy(self, node):
+    def rollout_policy(self):
         # return pick_random(node.children)
-        return
+        pass
 
     # function for backpropagation
-    def backpropagation(self, node, result):
+    def backpropagation(self):
         # if is_root(node) return
         # node.stats = update_stats(node, result)
         # backpropagation(node.parent)
-        return
+        pass
 
     def select_child(self, root):
 
@@ -170,6 +163,13 @@ class MCTS:
             root = best
         return root
 
+    def mcts(self, gate):
+        circuit = self.selection(gate)
+        self.rollout()
+        self.backpropagation()
+        return circuit
+
+
 
 def pairwise(iterable):
     # pairwise('ABCDEFG') --> AB BC CD DE EF FG
@@ -178,16 +178,16 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-c = Circuit(4)
-all = Allocation()
-con = all.connectivity()
-circ = c.get_circuit()
-
-a = Agent()
-for i in circ:
-    if not a.schedule_gate(con, i):
-        break
-
-m = MCTS(a, c)
-t = [0, 3, 0]
-m.selection(t)
+# c = Circuit(4)
+# all = Allocation()
+# con = all.connectivity()
+# circ = c.get_circuit()
+#
+# a = Agent()
+# for i in circ:
+#     if not a.schedule_gate(con, i):
+#         break
+#
+# m = MCTS(a, c)
+# t = [0, 3, 0]
+# m.mcts(t)

@@ -1,13 +1,19 @@
-from keras.models import Sequential
-from keras.layers import Dense
+import keras.losses
 from keras.optimizer_v2.adam import Adam
 
 import environment
+from monte_carlo_ts import MCTS
 from environment import Environment
 from circuit import Circuit
 
 # class state defines the board and decides reward, end and next position
 from qubit_allocation import Allocation
+import config
+
+from keras import Input, Model
+from keras.layers.core import Dense
+from keras.optimizer_v2 import rmsprop
+from keras.regularizers import l2
 
 
 class State:
@@ -47,31 +53,41 @@ class State:
 
 class Agent:
 
-    def __init__(self):
+    def __init__(self, circuit):
         self.learning_rate = 0.1
         self.scheduled_gates = []
+        self.model = None
+        self.n_qubits = circuit.n_qubits
 
-    def model(self):
-        # TODO: create vector where length = input_size
-        input_size = 3
-        model = Sequential()
-        model.add(Dense(10, input_dim=input_size, activation='relu'))
-        model.add(Dense(10, activation='relu'))
-        model.add(Dense(10, activation='relu'))
-        model.add(Dense(1, activation='linear'))
-        model.compile(loss='mse',
-                      optimizer=Adam(lr=self.learning_rate))
-        # TODO: try also different optimizers
+
+
+    def build_model(self):
+
+        # Input is number of qubits * maximum number swap gates that can be scheduled to decide the dimension of the circuit + the timestep entry
+        input_size = (self.n_qubits*(self.n_qubits-2)+1)
+        inputs = Input(shape=(input_size,))
+        dense = Dense(8, activation="relu")
+        x = dense(inputs)
+        x = Dense(8, activation="relu")(x)
+        outputs = Dense(10)(x)
+
+        model = Model(inputs=inputs, outputs=outputs, name="swap_prediction")
+        model.summary()
+
         return model
 
-    def action(self):
-        # while resources_left(time, computational power):
-        #     leaf = traverse(root)
-        #     simulation_result = rollout(leaf)
-        #     backpropagation(leaf, simulation_result)
-        #
-        # return best_child(root)
-        return
+    def model_train(self, circuit, model):
+        # TODO: split data into test and train data
+        # TODO: reshape the data
+        model.compile(loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      optimizer=Adam,
+                      metrics=["accuracy"]
+                      )
+
+        # TODO: model.fit()
+        # TODO: model.evualate()
+        # TODO: print loss and accuracy results
+        return model
 
     def schedule_gate(self, connectivity, gate):
         """
@@ -80,27 +96,33 @@ class Agent:
         if environment.is_in_connectivity(gate, connectivity):
             self.scheduled_gates.append(gate)
         else:
-            False
+            self.add_swap(gate)
 
-    def add_swap(self, action):
+
+    def add_swap(self, gate):
         """
        Action from MCTS added to the scheduled gates
        """
-        self.scheduled_gates.append(action)
+        #TODO: get this import working
+        #mcts = monte_carlo_ts.MCTS(self, )
+        #action = mcts.mcts(gate)
+        #for i in action:
+        #    self.scheduled_gates.append(i)
+        print(self.scheduled_gates)
 
     # TODO: print out tree of MCTS
     def show_tree(self):
         pass
 
 
-# if __name__ == "__main__":
-    # # create agent for 10,000 episdoes implementing a Q-learning algorithm plot and show values.
-    # c = Circuit(4)
-    # all = Allocation()
-    # con = all.connectivity()
-    # circ = c.get_circuit()
-    #
-    # a = Agent()
-    # for i in circ:
-    #     # print(i)
-    #     a.schedule_gate(con, i)
+if __name__ == "__main__":
+
+    c = Circuit(4)
+    all = Allocation()
+    con = all.connectivity()
+    circ = c.get_circuit()
+
+    a = Agent()
+    for i in circ:
+        # print(i)
+        a.schedule_gate(con, i)
