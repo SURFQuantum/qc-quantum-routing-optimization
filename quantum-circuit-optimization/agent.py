@@ -40,14 +40,12 @@ class State:
     def next_position(self, action):
         return 0
 
-    def state(self, circuit_i):
-        location_qubit = circuit_i[0]
-        interaction_qubit = circuit_i[1]
-        scheduled_gates = self.scheduled_gates
-        # TODO: find proper way to calculate distance based on topology
-        distance = circuit_i[1] - circuit_i[0]
+    def state(self):
+        #TODO: define a state representation based onnumber of qubits * maximum number swap gates
+        # that can be scheduled to decide the dimension of the circuit + the timestep entry
 
-        state = [location_qubit, interaction_qubit, scheduled_gates, distance]
+        # circuit from file [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
+        state = []
         return state
 
 
@@ -58,7 +56,6 @@ class Agent:
         self.scheduled_gates = []
         self.model = None
         self.n_qubits = circuit.n_qubits
-        self.circuit = circuit.get_circuit()
         self.input_size = self.n_qubits*(self.n_qubits-2)+1
 
 
@@ -79,16 +76,14 @@ class Agent:
 
     def model_train(self):
         model = self.build_model()
-
+        state = State.state()
         #TODO: reshape circuit into state representation
 
-        # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
+        x_train = state[:80]
+        y_train = state[:80]
 
-        x_train = self.circuit[:80]
-        y_train = self.circuit[:80]
-
-        x_test = self.circuit[80:]
-        y_test = self.circuit[80:]
+        x_test = state[80:]
+        y_test = state[80:]
 
         x_train = x_train.reshape(600, self.input_size).astype("float32") / 255
         x_test = x_test.reshape(100, self.input_size).astype("float32") / 255
