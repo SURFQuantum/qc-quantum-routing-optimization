@@ -2,7 +2,7 @@ import keras.losses
 from keras.optimizer_v2.adam import Adam
 
 import environment
-from monte_carlo_ts import MCTS
+# from monte_carlo_ts import MCTS
 from environment import Environment
 from circuit import Circuit
 
@@ -58,14 +58,15 @@ class Agent:
         self.scheduled_gates = []
         self.model = None
         self.n_qubits = circuit.n_qubits
-
+        self.circuit = circuit.get_circuit()
+        self.input_size = self.n_qubits*(self.n_qubits-2)+1
 
 
     def build_model(self):
 
         # Input is number of qubits * maximum number swap gates that can be scheduled to decide the dimension of the circuit + the timestep entry
-        input_size = (self.n_qubits*(self.n_qubits-2)+1)
-        inputs = Input(shape=(input_size,))
+
+        inputs = Input(shape=(self.input_size,))
         dense = Dense(8, activation="relu")
         x = dense(inputs)
         x = Dense(8, activation="relu")(x)
@@ -76,17 +77,31 @@ class Agent:
 
         return model
 
-    def model_train(self, circuit, model):
-        # TODO: split data into test and train data
-        # TODO: reshape the data
+    def model_train(self):
+        model = self.build_model()
+
+        #TODO: reshape circuit into state representation
+
+        # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
+
+        x_train = self.circuit[:80]
+        y_train = self.circuit[:80]
+
+        x_test = self.circuit[80:]
+        y_test = self.circuit[80:]
+
+        x_train = x_train.reshape(600, self.input_size).astype("float32") / 255
+        x_test = x_test.reshape(100, self.input_size).astype("float32") / 255
+
         model.compile(loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       optimizer=Adam,
                       metrics=["accuracy"]
                       )
+        model.fit(x_train, y_train, batch_size=64, epochs=2, validation_split=0.2)
+        test_scores = model.evaluate(x_test, y_test, verbose=2)
+        print("Test loss:", test_scores[0])
+        print("Test accuracy:", test_scores[1])
 
-        # TODO: model.fit()
-        # TODO: model.evualate()
-        # TODO: print loss and accuracy results
         return model
 
     def schedule_gate(self, connectivity, gate):
@@ -122,7 +137,9 @@ if __name__ == "__main__":
     con = all.connectivity()
     circ = c.get_circuit()
 
-    a = Agent()
-    for i in circ:
-        # print(i)
-        a.schedule_gate(con, i)
+    a = Agent(c)
+    # for i in circ:
+    #     # print(i)
+    #     a.schedule_gate(con, i)
+
+    print(a.circuit)
