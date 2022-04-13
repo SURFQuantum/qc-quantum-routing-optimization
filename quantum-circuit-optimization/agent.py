@@ -103,32 +103,24 @@ class State:
         # check in what row the qubits are
         print(self.scheduled_gates)
         for i in self.scheduled_gates:
-            print(f'gate {i}')
             qubit_1 = self.check(i[0], q0,q1,q2,q3)
             qubit_2 = self.check(i[1], q0, q1, q2, q3)
             #place the qubit on the right place on the vector, if a vector is already taken, look for the next spot in the row
-            for j in qubit_1:
-                if state[j] == 0:
+
+            for j,k in zip(qubit_1,qubit_2):
+
+                if state[j] == 0 and state[k] == 0:
                     # add 10 to indicate its a CNOT, add 20 to indicate SWAP
                     if i[2] == 0:
-                        print(j)
                         state[j] = i[1]+10
-                        print(f' {i[1]} qubit komt op state {j}')
+                        state[k] = i[0] + 10
                         break
                     if i[2] ==1:
                         state[j] = i[1] + 20
+                        state[k] = i[0] + 20
                         break
-            for j in qubit_2:
-                if state[j] == 0:
-                    if i[2] == 0:
-                        state[j] = i[0] + 10
-                        print(f' {i[0]} qubit komt op state {j}')
-                        break
-                    if i[2] == 1:
-                        state[j] = i[0] + 20
-                        break
-        # TODO: start is right, but the rest isnt completely correct, i need to say q1 location > q0 location -1
-        # should be [11,10,13,12,0,12,11,10,13,12,0,0..]
+
+        #TODO: add time step en fix schedule_gate
         print(state)
         return state
 
