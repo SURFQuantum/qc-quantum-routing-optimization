@@ -1,4 +1,5 @@
 import keras.losses
+import numpy as np
 from keras.optimizer_v2.adam import Adam
 
 import environment
@@ -8,12 +9,13 @@ from circuit import Circuit
 
 # class state defines the board and decides reward, end and next position
 from qubit_allocation import Allocation
-import config
+
 
 from keras import Input, Model
 from keras.layers.core import Dense
-from keras.optimizer_v2 import rmsprop
-from keras.regularizers import l2
+
+import numpy
+
 
 
 class State:
@@ -22,8 +24,20 @@ class State:
         self.isEnd = False
         self.length = 0
         self.scheduled_gates = agent.scheduled_gates
-        self.action = agent.action()
+        self.n_qubits = self.highest()
 
+
+    def highest(self):
+        max = 0
+        list = self.circuit
+
+        for i in list:
+            for j in i:
+                if j > max:
+                    max = j
+
+        max +=1
+        return max
     # TODO: get reward from MCTS
     def get_reward(self):
         return 0
@@ -40,14 +54,79 @@ class State:
     def next_position(self, action):
         return 0
 
+    def check(self, i, q0, q1, q2, q3):
+        if i in q0:
+            return q0
+        elif i in q1:
+            return q1
+        elif i in q2:
+            return q2
+        else:
+            return q3
+
     def state(self):
-        #TODO: define a state representation based onnumber of qubits * maximum number swap gates
-        # that can be scheduled to decide the dimension of the circuit + the timestep entry
-
         # circuit from file [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
-        state = []
-        return state
+        """
+          |ts1|ts2|ts3 |ts4| ts5
+        ------------------------  #ts
+        q0| 0 | 4 | 8 | 12 | 16 | 20
+        ------------------------
+        q1| 1 | 5 | 9 | 13 | 17
+        ------------------------
+        q2| 2 | 6 | 10| 14 | 18
+        ------------------------
+        q3| 3 | 7 | 11| 15 | 19
 
+        schedule_gates = [[0,1,0],[3,2,0],[3,0,0],[0,2,0]]
+        CNOT = 1, SWAP = 2
+
+          |ts1 |ts2 |ts3 |ts4| ts5
+        ------------------------  #ts
+        q0| 10 | 13 | 12 | 0 | 0 | 5
+        ------------------------
+        q1| 11 | 0  | 0 | 0 | 0
+        ------------------------
+        q2| 13 | 0  | 10| 0 | 0
+        ------------------------
+        q3| 12 | 10 | 0| 0  | 0
+        """
+
+        # numpy vector full of zeros
+        state = np.zeros(self.n_qubits * ((len(self.scheduled_gates)) + (self.n_qubits-1)))
+
+        # index number that are connected to the qubits
+        q0 = [0,4,8,12,16,20,24,28]
+        q1 = [1,5,9,13,17,21,25,29]
+        q2 = [2,6,10,14,18,22,26,30]
+        q3 = [3,7,11,15,19,23,27,31]
+
+        # check in what row the qubits are
+        print(self.scheduled_gates)
+        for i in self.scheduled_gates:
+            print(f'gate {i}')
+            qubit_1 = self.check(i[0], q0,q1,q2,q3)
+            qubit_2 = self.check(i[1], q0, q1, q2, q3)
+            #place the qubit on the right place on the vector, if a vector is already taken, look for the next spot in the row
+            for j in qubit_1:
+                if state[j] == 0:
+                    # add 10 to indicate its a CNOT, add 20 to indicate SWAP
+                    if i[2] == 0:
+                        state[j] = i[1]+10
+                        break
+                    if i[2] ==1:
+                        state[j] = i[1] + 20
+                        break
+            for j in qubit_2:
+                if state[j] == 0:
+                    if i[2] == 0:
+                        state[j] = i[0] + 10
+                        break
+                    if i[2] == 1:
+                        state[j] = i[0] + 20
+                        break
+        # TODO: start is right, but the rest isnt totally correct
+        print(state)
+        return state
 
 class Agent:
 
@@ -133,8 +212,8 @@ if __name__ == "__main__":
     circ = c.get_circuit()
 
     a = Agent(c)
-    # for i in circ:
-    #     # print(i)
-    #     a.schedule_gate(con, i)
-
-    print(a.circuit)
+    for i in circ:
+        # print(i)
+        a.schedule_gate(con, i)
+    s = State(c,a)
+    s.state()
