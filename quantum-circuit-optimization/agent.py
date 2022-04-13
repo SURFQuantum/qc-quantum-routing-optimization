@@ -111,7 +111,9 @@ class State:
                 if state[j] == 0:
                     # add 10 to indicate its a CNOT, add 20 to indicate SWAP
                     if i[2] == 0:
+                        print(j)
                         state[j] = i[1]+10
+                        print(f' {i[1]} qubit komt op state {j}')
                         break
                     if i[2] ==1:
                         state[j] = i[1] + 20
@@ -120,11 +122,13 @@ class State:
                 if state[j] == 0:
                     if i[2] == 0:
                         state[j] = i[0] + 10
+                        print(f' {i[0]} qubit komt op state {j}')
                         break
                     if i[2] == 1:
                         state[j] = i[0] + 20
                         break
-        # TODO: start is right, but the rest isnt totally correct
+        # TODO: start is right, but the rest isnt completely correct, i need to say q1 location > q0 location -1
+        # should be [11,10,13,12,0,12,11,10,13,12,0,0..]
         print(state)
         return state
 
