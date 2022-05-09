@@ -1,5 +1,7 @@
 # Qubit Routing with Reinforcement Learning (RL)
 
+Check [here](https://github.com/Lizaterdag/quantum-routing-optimization/tree/main/quantum-circuit-optimization) for my code developed with RL and Monte Carlo Tree Search
+
 This repository is part of a Bachelor internship thesis on Quantum Routing Optimisation for the company SURF. It contains code for a qubit routing procedure that makes use of RL. Originally developed by Matteo G. Pozzi for the University of Cambridge Computer Laboratory. A paper on the subject is available here: https://arxiv.org/abs/2007.15957. 
 This repository also contains notes and presentations from the meetings at SURF and the original thesis. 
 
