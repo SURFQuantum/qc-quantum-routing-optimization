@@ -10,22 +10,18 @@ from circuit import Circuit
 # class state defines the board and decides reward, end and next position
 from qubit_allocation import Allocation
 
-
 from keras import Input, Model
 from keras.layers.core import Dense
 
 import numpy
 
 
-
 class State:
-    def __init__(self, circuit, agent):
+    def __init__(self, circuit):
         self.circuit = circuit.get_circuit()  # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         self.isEnd = False
         self.length = 0
-        self.scheduled_gates = agent.scheduled_gates
         self.n_qubits = self.highest()
-
 
     def highest(self):
         max = 0
@@ -36,8 +32,9 @@ class State:
                 if j > max:
                     max = j
 
-        max +=1
+        max += 1
         return max
+
     # TODO: get reward from MCTS
     def get_reward(self):
         return 0
@@ -54,17 +51,19 @@ class State:
     def next_position(self, action):
         return 0
 
-    def check(self, i, q0, q1, q2, q3):
-        if i in q0:
-            return q0
-        elif i in q1:
-            return q1
-        elif i in q2:
-            return q2
-        else:
-            return q3
+    def check(self, i, q):
+        if i in q:
+             return True
 
-    def state(self):
+    def zero_runs(self, a):
+        # Create an array that is 1 where a is 0, and pad each end with an extra 0.
+        iszero = np.concatenate(([0], np.equal(a, 0).view(np.int8), [0]))
+        absdiff = np.abs(np.diff(iszero))
+        # Runs start and end where absdiff is 1.
+        ranges = np.where(absdiff == 1)[0].reshape(-1, 2)
+        return ranges
+
+    def state(self, scheduled_gates):
         # circuit from file [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         """
           |ts1|ts2|ts3 |ts4| ts5
@@ -82,57 +81,87 @@ class State:
 
           |ts1 |ts2 |ts3 |ts4| ts5
         ------------------------  #ts
-        q0| 10 | 13 | 12 | 0 | 0 | 5
+        q0| 11 | 13 | 12 | 0 | 0 | 5
         ------------------------
-        q1| 11 | 0  | 0 | 0 | 0
+        q1| 10 | 0  | 0 | 0 | 0
         ------------------------
         q2| 13 | 0  | 10| 0 | 0
         ------------------------
         q3| 12 | 10 | 0| 0  | 0
+
+        state is [11. 10. 13. 12. 13.  0.  0. 10. 12.  0. 10.  0.  0.  0.  0.  0.  0.  0.
+        0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  5.]
         """
 
         # numpy vector full of zeros
-        state = np.zeros(self.n_qubits * ((len(self.scheduled_gates)) + (self.n_qubits-1)))
+        state = np.zeros(self.n_qubits * ((len(scheduled_gates)) + (self.n_qubits - 1)) + 1)
+        q = []
 
-        # index number that are connected to the qubits
-        q0 = [0,4,8,12,16,20,24,28]
-        q1 = [1,5,9,13,17,21,25,29]
-        q2 = [2,6,10,14,18,22,26,30]
-        q3 = [3,7,11,15,19,23,27,31]
+        # Creating matrix with the position numbers, timestep on the columns
+        # and qubits on the rows (first matrix from the comments above)
+        for i in range(self.n_qubits):
+            qu = []
+            for j in range(0,len(state), self.n_qubits):
+                qu.append(j+i)
+            q.append(qu)
+        print(q)
 
         # check in what row the qubits are
-        print(self.scheduled_gates)
-        for i in self.scheduled_gates:
-            qubit_1 = self.check(i[0], q0,q1,q2,q3)
-            qubit_2 = self.check(i[1], q0, q1, q2, q3)
-            #place the qubit on the right place on the vector, if a vector is already taken, look for the next spot in the row
+        print(f'scheduled gate are {scheduled_gates}')
+        for i in scheduled_gates:
+            for h in range(self.n_qubits):
+                qubit_1 = self.check(i[0], q[h])
+                if qubit_1:
+                    qubit_1 = q[h]
+                    break
+            for d in range(self.n_qubits):
+                qubit_2 = self.check(i[1], q[d])
+                if qubit_2:
+                    qubit_2 = q[d]
+                    break
 
-            for j,k in zip(qubit_1,qubit_2):
+            # place the qubit on the right place on the vector, if a vector is already taken, look for the next spot in the row
+            for j, k in zip(qubit_1, qubit_2):
 
                 if state[j] == 0 and state[k] == 0:
                     # add 10 to indicate its a CNOT, add 20 to indicate SWAP
                     if i[2] == 0:
-                        state[j] = i[1]+10
+                        state[j] = i[1] + 10
                         state[k] = i[0] + 10
                         break
-                    if i[2] ==1:
+                    if i[2] == 1:
                         state[j] = i[1] + 20
                         state[k] = i[0] + 20
                         break
 
-        #TODO: add time step en fix schedule_gate
-        print(state)
+        # find where in the circuit there are no more gates
+        runs = self.zero_runs(state)
+        last_item = runs[-1]
+        print(f' gates end at {last_item}')
+
+        # calculate number of timesteps
+        for i in q:
+            ts = self.check(last_item[0],i)
+            if ts:
+                timestep = i.index(last_item[0]) + 1
+                break
+
+        print(f'number of timesteps are {timestep}')
+        position = len(state) - 1
+        state[position] = timestep
+        print(f'the state is {state}')
         return state
+
 
 class Agent:
 
-    def __init__(self, circuit):
+    def __init__(self, circuit, state):
+        self.state = state
         self.learning_rate = 0.1
         self.scheduled_gates = []
         self.model = None
         self.n_qubits = circuit.n_qubits
-        self.input_size = self.n_qubits*(self.n_qubits-2)+1
-
+        self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
 
     def build_model(self):
 
@@ -152,7 +181,7 @@ class Agent:
     def model_train(self):
         model = self.build_model()
         state = State.state()
-        #TODO: reshape circuit into state representation
+        # TODO: reshape circuit into state representation
 
         x_train = state[:80]
         y_train = state[:80]
@@ -181,17 +210,18 @@ class Agent:
         if environment.is_in_connectivity(gate, connectivity):
             self.scheduled_gates.append(gate)
         else:
-            self.add_swap(gate)
-
+            schedule = self.scheduled_gates
+            schedule.append(gate)
+            self.state.state(schedule)
 
     def add_swap(self, gate):
         """
        Action from MCTS added to the scheduled gates
        """
-        #TODO: get this import working
-        #mcts = monte_carlo_ts.MCTS(self, )
-        #action = mcts.mcts(gate)
-        #for i in action:
+        # TODO: get this import working
+        # mcts = monte_carlo_ts.MCTS(self, )
+        # action = mcts.mcts(gate)
+        # for i in action:
         #    self.scheduled_gates.append(i)
         print(self.scheduled_gates)
 
@@ -206,10 +236,8 @@ if __name__ == "__main__":
     all = Allocation()
     con = all.connectivity()
     circ = c.get_circuit()
-
-    a = Agent(c)
+    s = State(c)
+    a = Agent(c,s)
     for i in circ:
         # print(i)
         a.schedule_gate(con, i)
-    s = State(c,a)
-    s.state()

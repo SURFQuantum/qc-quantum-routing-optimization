@@ -9,6 +9,9 @@ class Allocation:
         self.topology = []
         self.qubits = 4
 
+    def weighted_graph(self):
+        pass
+
     @property
     def qubit_allocation(self):
         # TODO: remove the random qubit allocation and fix that
