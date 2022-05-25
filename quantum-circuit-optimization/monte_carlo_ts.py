@@ -45,7 +45,7 @@ class MCTS:
         Upper Confidence Bound for selecting the best child node
         """
         # wortel 2
-        ucb = node_i.reward + 2 * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
+        ucb = node_i.reward + sqrt(2) * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
         return ucb
 
     def swap_schedule(self, i, end_state, gate):

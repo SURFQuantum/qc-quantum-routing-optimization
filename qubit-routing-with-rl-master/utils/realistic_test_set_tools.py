@@ -9,7 +9,7 @@ from environments.circuits import QubitCircuit
 def import_test_set():
     print('Importing test set...')
 
-    directory_path = "./realistic_test_set/"
+    directory_path = "../realistic_test_set/"
 
     files = os.listdir(directory_path)
     qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
