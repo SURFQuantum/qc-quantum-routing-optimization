@@ -13,7 +13,7 @@ class Environment:
         # print(self.qubits)
         self.topology = allocation_class.topology
         # print(self.topology)
-        self.gates = circuit_class.get_circuit() # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2T, 3, 0]]
+        self.gates = circuit_class.get_circuit() # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         print(self.gates)
         self.connectivity: List[Tuple[int, int]] = allocation_class.connectivity()  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
         # print(self.connectivity)

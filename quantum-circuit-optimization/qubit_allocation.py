@@ -108,8 +108,8 @@ class Allocation:
         """
         # self-assigned qubit allocation linearly for testing
         # [0, 1, 2, 3, 4, 5]
-        # for i in range(self.qubits):
-        #     self.topology.append(i)
+        for i in range(self.qubits):
+            self.topology.append(i)
 
         #TODO: get the outdegrees to match for the mapping
         outdegree_graph, outdegree_top = self.weighted_graph()
@@ -125,67 +125,67 @@ class Allocation:
         #                 g[key] = k
         #                 break
 
-
-        q0 = q1 = q2 = q3 = q4 = q5= 1
-        a = b = c = d = 1
-        isomorph = 0
-
-        while isomorph <= 10:
-            weighted_graph = {'a': [b,c], 'b':[a,d,c], 'c':[b,d,a], 'd':[c,b]}
-            topology = {'q0':[q1], 'q1':[q0,q2], 'q2':[q1,q3], 'q3':[q2,q4], 'q4':[q3,q5], 'q5':[q4]}
-            #print(dic1)
-            #print(dic2)
-            for i in weighted_graph:
-
-                x = tuple(weighted_graph[i])
-                h = hash(x)
-                weighted_graph[i] = h
-
-            for i in topology:
-                x = tuple(topology[i])
-                h = hash(x)
-                topology[i] = h
-
-            a = weighted_graph['a']
-            b = weighted_graph['b']
-            c = weighted_graph['c']
-            d = weighted_graph['d']
-            #print(f' dict 1{dic1}')
-
-            q0 = topology['q0']
-            q1 = topology['q1']
-            q2 = topology['q2']
-            q3 = topology['q3']
-            q4 = topology['q4']
-            #print(f' dict 2{dic2}')
-
-            count_1 = Counter(weighted_graph.values())
-            count_2 = Counter(topology.values())
-            print(f'counts {count_1.values()}')
-            print(f'counts {count_2.values()}')
-
-            print((dict(count_1)).values())
-
-            shared_items = {k: count_1[k] for k in count_1 if k in count_2 and count_1[k] == count_2[k]}
-            # print(len(shared_items))
-
-            if count_1 == count_2 or count_2 == count_1:
-                print('equal')
-
-
-            isomorph+=1
-
-
-        G = nx.Graph()
-        H = nx.Graph()
-
-        G.add_edge(0,4)
-        G.add_edge(0, 1)
-        G.add_edge(0, 2)
-        G.add_edge(2, 3)
-        G.add_edge(3, 4)
-
-        print(G.number_of_edges())
+        #
+        # q0 = q1 = q2 = q3 = q4 = q5= 1
+        # a = b = c = d = 1
+        # isomorph = 0
+        #
+        # while isomorph <= 10:
+        #     weighted_graph = {'a': [b,c], 'b':[a,d,c], 'c':[b,d,a], 'd':[c,b]}
+        #     topology = {'q0':[q1], 'q1':[q0,q2], 'q2':[q1,q3], 'q3':[q2,q4], 'q4':[q3,q5], 'q5':[q4]}
+        #     #print(dic1)
+        #     #print(dic2)
+        #     for i in weighted_graph:
+        #
+        #         x = tuple(weighted_graph[i])
+        #         h = hash(x)
+        #         weighted_graph[i] = h
+        #
+        #     for i in topology:
+        #         x = tuple(topology[i])
+        #         h = hash(x)
+        #         topology[i] = h
+        #
+        #     a = weighted_graph['a']
+        #     b = weighted_graph['b']
+        #     c = weighted_graph['c']
+        #     d = weighted_graph['d']
+        #     #print(f' dict 1{dic1}')
+        #
+        #     q0 = topology['q0']
+        #     q1 = topology['q1']
+        #     q2 = topology['q2']
+        #     q3 = topology['q3']
+        #     q4 = topology['q4']
+        #     #print(f' dict 2{dic2}')
+        #
+        #     count_1 = Counter(weighted_graph.values())
+        #     count_2 = Counter(topology.values())
+        #     print(f'counts {count_1.values()}')
+        #     print(f'counts {count_2.values()}')
+        #
+        #     print((dict(count_1)).values())
+        #
+        #     shared_items = {k: count_1[k] for k in count_1 if k in count_2 and count_1[k] == count_2[k]}
+        #     # print(len(shared_items))
+        #
+        #     if count_1 == count_2 or count_2 == count_1:
+        #         print('equal')
+        #
+        #
+        #     isomorph+=1
+        #
+        #
+        # G = nx.Graph()
+        # H = nx.Graph()
+        #
+        # G.add_edge(0,4)
+        # G.add_edge(0, 1)
+        # G.add_edge(0, 2)
+        # G.add_edge(2, 3)
+        # G.add_edge(3, 4)
+        #
+        # print(G.number_of_edges())
             # for i in dic2:
             #     for j in i:
             #         print(j)

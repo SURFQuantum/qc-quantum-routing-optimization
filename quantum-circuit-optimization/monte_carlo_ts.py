@@ -1,9 +1,18 @@
 import itertools
 from math import log, sqrt, e, inf
+from sre_parse import State
+
+
 from agent import Agent
 from circuit import Circuit
 from qubit_allocation import Allocation
 
+
+def pairwise(iterable):
+    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 class Node:
     def __init__(self):
@@ -16,7 +25,7 @@ class Node:
 
 class MCTS:
 
-    def __init__(self, agent, circuit):
+    def __init__(self, agent, circuit, allocation):
         self.state = agent.scheduled_gates
         # print(f'the state is {self.state}')# a circuit [[0,1,0],[1,0,0]] from first action
         # self.constraints = allocation_class.connectivity()
@@ -27,6 +36,7 @@ class MCTS:
         self.n = 0
         self.n_qubits = circuit.n_qubits
         self.root = Node()
+        self.connectivity = allocation.connectivity()
 
     # Node is a circuit with gates, parent node should change for every action, child node is the possible action
     # coming from parent node
@@ -44,51 +54,50 @@ class MCTS:
         """
         Upper Confidence Bound for selecting the best child node
         """
-        # wortel 2
         ucb = node_i.reward + sqrt(2) * (sqrt(log(node_i.N + e + (10 ** (-6))) / (node_i.n + 10 ** (-1))))
         return ucb
 
     def swap_schedule(self, i, end_state, gate):
 
-        # (ADD: constraint not two swaps next to each other)
-
         a, b, _ = i
+        end_distance = 100
         print(i)
 
-        # Calculate the current distance between control and target
-        if gate[0] > gate[1]:
-            distance = gate[0] - gate[1]
-        else:
-            distance = gate[1] - gate[0]
-
+        # CNOT-gate
         new_gate = [gate[0], gate[1]]
 
-        # Swap the nodes and change the CNOT gate if necessary
+        # Swap the nodes and change the CNOT-gate
         for x in range(len(new_gate)):
             if new_gate[x] == a:
                 new_gate[x] = b
             elif new_gate[x] == b:
                 new_gate[x] = a
         new_gate.append(0)
-        print(f' new gate in swap_schedule is {new_gate}')
+        print(f' new CNOT-gate position {new_gate}')
 
-        # Calculate new distance of the changed CNOT gate
-        if new_gate[0] > new_gate[1]:
-            new_distance = new_gate[0] - new_gate[1]
-        else:
-            new_distance = new_gate[1] - new_gate[0]
-        print(f'distance is {new_distance}')
+        # calculate the distance to an operable qubit connectivity location
+        for i in self.connectivity:
+            q0 = new_gate[0] - i[0]
+            q1 = new_gate[1] - i[1]
 
-        # Reward for improving the CNOT
-        if new_distance == 1:
+            if q0 < 0:
+                q0 = q0*-1
+
+            if q1 < 0:
+                q1 = q1*-1
+            distance = q0 + q1
+            if distance < end_distance:
+                end_distance = distance
+
+        #Reward for improving the CNOT
+        if end_distance == 0:
             reward = 100
             end_state = True
-        elif new_distance < distance:
+        elif end_distance < 4:
             reward = 5
         else:
+            # if distance to an operable qubit location is more than 4, then this swap location is not recommended
             reward = -1
-
-        print(f'reward is {reward}')
         return end_state, reward, new_gate, i
 
     def selection(self, gate):
@@ -103,6 +112,7 @@ class MCTS:
         child = Node()
         end_state = False
         timestep = 0
+        N = 6 #number of max iterations
 
         # Iterate through the children until the CNOT is operable
         while not end_state:
@@ -122,15 +132,22 @@ class MCTS:
 
             # Find the best child
             child = self.select_child(self.root)
-            print(child.action)
+            print(f' Best child = {child.action}')
             circuit.append(child.action)
 
+            # Not more than 6 iterations for selection
+            if timestep == N:
+                break
+            if end_state:
+                gate = new_gate
+
         circuit.append(gate)
-        print(circuit)
-        return circuit
+        print(f' Circuit is {circuit}')
+        return circuit, reward
 
     # function for the result of the simulation
-    def rollout(self):
+    def expand(self):
+
         # while non_terminal(node):
         #     node = rollout_policy(node)
         # return result(node)
@@ -164,30 +181,23 @@ class MCTS:
         return root
 
     def mcts(self, gate):
-        circuit = self.selection(gate)
-        self.rollout()
+        circuit, _ = self.selection(gate)
+        self.expand()
         self.backpropagation()
         return circuit
 
 
+c = Circuit(4)
+s = State()
+all = Allocation(c)
+con = all.connectivity()
+circ = c.get_circuit()
 
-def pairwise(iterable):
-    # pairwise('ABCDEFG') --> AB BC CD DE EF FG
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
+a = Agent(c,s)
+for i in circ:
+    if not a.schedule_gate(con, i):
+        break
 
-
-# c = Circuit(4)
-# all = Allocation()
-# con = all.connectivity()
-# circ = c.get_circuit()
-#
-# a = Agent()
-# for i in circ:
-#     if not a.schedule_gate(con, i):
-#         break
-#
-# m = MCTS(a, c)
-# t = [0, 3, 0]
-# m.mcts(t)
+m = MCTS(a, c, all)
+t = [0, 3, 0]
+m.mcts(t)
