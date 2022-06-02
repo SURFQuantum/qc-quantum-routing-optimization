@@ -16,7 +16,7 @@ def pairwise(iterable):
 
 class Node:
     def __init__(self):
-        self.reward = 1
+        self.reward = 0
         self.parent_visits = 1
         self.child_visits = 1
         self.children: list[Node] = []
@@ -172,34 +172,24 @@ class MCTS:
 
     # function for the result of the simulation
     def expand(self, root):
-        end_state = False
-        random_node = Node()
-        random_node.action = root.action
+        print(root.reward)
+        if root.reward != 100:
+            end_state = False
+            random_node = Node()
+            random_node.action = root.action
+            while random_node.action == root.action:
+                random_node.action = random.choice(self.action)
 
-        while random_node.action == root.action:
-            random_node.action = random.choice(self.action)
+            random_node.ucb = self.ucb(random_node)
+            _, reward, new_gate = self.swap_schedule(random_node.action, end_state, root.cnot)
 
-        random_node.ucb = self.ucb(random_node)
-        _, reward, new_gate = self.swap_schedule(random_node.action, end_state, random_node.cnot)
+            random_node.reward = reward
+            random_node.cnot = new_gate
 
-        random_node.reward = reward
-        random_node.cnot = new_gate
-
-        return random_node
-
-
-    # function for randomly selecting a child node
-    def rollout_policy(self, root):
-        # return pick_random(node.children)
-        child = random.choice(root.children)
-        root.children = []
-        root.add_child(child)
-        child_win_value = child.ucb
-
-        if child_win_value != 0:
-            root.update_win_value(child_win_value)
+            self.simulate(random_node)
+            return random_node
         else:
-            self.rollout_policy(child)
+            return None
 
     # function for backpropagation
     def backpropagation(self):
@@ -227,17 +217,16 @@ class MCTS:
             select = child_node.action
         return child_node
 
-    def simulate(self, expansion_count = 1):
-        for i in range(expansion_count):
-            current_node = self.root
-            while current_node.expanded:
-                current_node = current_node.get_preferred_child(self.root)
-
-            self.expand(current_node)
+    def simulate(self, parent):
+        pass
 
     def mcts(self, gate):
         circuit, child = self.selection(gate)
-        self.expand(child)
+        expansion_node = self.expand(child)
+        if expansion_node is not None:
+            circuit[-1] = expansion_node.action
+            circuit.append(expansion_node.cnot)
+        print(circuit)
         self.backpropagation()
         return circuit
 
