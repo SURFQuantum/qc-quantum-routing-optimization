@@ -66,7 +66,7 @@ class Circuit:
 
         file = os.listdir(directory_path)
 
-        file_name = 'test_circuits/test.qasm'
+        file_name = 'test_circuits/4gt4-v0_72.qasm'
         for file_line in file:
             file_path = directory_path + file_line
 
@@ -100,8 +100,8 @@ class Circuit:
         return gates
 
 # Finding out the circuit depth and max qubit used, does into account parallel routing
-circ = Circuit(4)
-circ.get_circuit()
+# circ = Circuit(4)
+# circ.get_circuit()
 
 # circuits = list(filter(lambda c: c.depth() < 100, circ.get_circuit()))
 #

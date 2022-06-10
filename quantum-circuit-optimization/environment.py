@@ -16,7 +16,7 @@ class Environment:
         self.gates = circuit_class.get_circuit() # [[0, 1, 0], [3, 2, 0], [3, 0, 0], [0, 2, 0], [1, 2, 0], [1, 0, 0], [2, 3, 0]]
         print(self.gates)
         self.connectivity: List[Tuple[int, int]] = allocation_class.connectivity()  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
-        # print(self.connectivity)
+
 
     # Forgot why I needed this, still keeping it for now
     def circuit_matrix(self):

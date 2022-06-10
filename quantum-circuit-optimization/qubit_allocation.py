@@ -12,8 +12,8 @@ class Allocation:
     def __init__(self, circuit_class):
         # linear topology i.e. [A,B,C,D,E,F]
         # connectivity would be (0,1) (1,0) (1,2) (2,1) (2,3) (3,2)
-        self.topology = [0,1,2,3,4,5]
-        self.qubits = 4
+        self.topology = None
+        self.qubits = 16
         self.gates = circuit_class.get_circuit()
         self.allocation = []
 
@@ -100,7 +100,7 @@ class Allocation:
         """
         Random qubit allocation
         """
-        self.topology = (random.sample(range(self.qubits), 4))
+        self.topology = (random.sample(range(self.qubits), self.qubits))
         print(self.topology)
 
         """
@@ -112,7 +112,7 @@ class Allocation:
         #     self.topology.append(i)
 
         #TODO: get the outdegrees to match for the mapping
-        outdegree_graph, outdegree_top = self.weighted_graph()
+        #outdegree_graph, outdegree_top = self.weighted_graph()
         # print(f'weighted graph = {outdegree_graph}')
         # print(f'topology = {outdegree_top}')
 
@@ -222,6 +222,8 @@ class Allocation:
     Set of the connectivity 
     """
     def connectivity(self):
+        if not self.topology:
+            self.qubit_allocation()
         topology = self.topology
         connectivity_set = []
 
@@ -240,4 +242,4 @@ class Allocation:
 
 c = Circuit(4)
 a = Allocation(c)
-a.qubit_allocation()
+

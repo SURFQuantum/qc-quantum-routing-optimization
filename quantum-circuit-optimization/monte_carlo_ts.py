@@ -43,8 +43,7 @@ class Node:
 
 class MCTS:
 
-    def __init__(self, agent, circuit, allocation):
-        self.state = agent.scheduled_gates
+    def __init__(self, circuit, allocation):
         # print(f'the state is {self.state}')# a circuit [[0,1,0],[1,0,0]] from first action
         # self.constraints = allocation_class.connectivity()
         self.reward = 0
@@ -81,7 +80,7 @@ class MCTS:
 
         a, b, _ = i
         end_distance = inf
-        print(f'gate is {gate}')
+        #print(f'gate is {gate}')
 
         # CNOT-gate
         new_gate = [gate[0], gate[1]]
@@ -94,7 +93,7 @@ class MCTS:
                 new_gate[x] = a
         new_gate.append(0)
 
-        print(f'new gate is {new_gate}')
+        #print(f'new gate is {new_gate}')
         #print(f' new CNOT-gate position {new_gate}')
 
         # calculate the distance to an operable qubit connectivity location
@@ -121,7 +120,7 @@ class MCTS:
             # if distance to an operable qubit location is more than 4, then this swap location is not recommended
             reward = -1
 
-        print(reward)
+        #print(reward)
         return end_state, reward, new_gate
 
     def selection(self, gate):
@@ -204,7 +203,7 @@ class MCTS:
 
         for child in root.children:
             score = child.ucb
-            print(score)
+            #print(score)
 
             if score > best_score:
                 best_score = score
@@ -217,7 +216,7 @@ class MCTS:
             select = child_node.action
         return child_node
 
-    def simulate(self, parent):
+    def simulate(self, root):
         pass
 
     def mcts(self, gate):
@@ -230,17 +229,20 @@ class MCTS:
         self.backpropagation()
         return circuit
 
-c = Circuit(4)
+c = Circuit(16)
 s = State()
+print(s)
 all = Allocation(c)
 con = all.connectivity()
 circ = c.get_circuit()
 
 a = Agent(c,s)
-for i in circ:
-    if not a.schedule_gate(con, i):
+while True:
+    broken_gate = a.schedule_gate(con, circ)
+    if broken_gate is None:
         break
+    m = MCTS(c, all)
+    gate_to_fix = m.mcts(broken_gate)
+    a.add_swap(gate_to_fix)
 
-m = MCTS(a, c, all)
-t = [3, 0, 0]
-m.mcts(t)
+print("Fixed the cirquit")

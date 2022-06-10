@@ -1,6 +1,10 @@
 import keras.losses
 import numpy as np
+from keras.layers import Embedding
+from keras.models import Sequential
 from keras.optimizer_v2.adam import Adam
+from keras.models import model_from_json
+from PER_memory_tree import Memory
 
 import environment
 # from monte_carlo_ts import MCTS
@@ -91,6 +95,8 @@ class State:
 
         state is [11. 10. 13. 12. 13.  0.  0. 10. 12.  0. 10.  0.  0.  0.  0.  0.  0.  0.
         0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  5.]
+
+        output = [ 0.  1.  0. 1.]
         """
 
         # numpy vector full of zeros
@@ -162,35 +168,94 @@ class Agent:
         self.model = None
         self.n_qubits = circuit.n_qubits
         self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
+        self.memory_size = 500
+        self.memory_tree = Memory(self.memory_size)
+        self.target_model = self.build_model()
+
+        self.gamma = 0.6
+        self.epsilon = 1.0
+        self.epsilon_min = 0.001
+        self.epsilon_decay = 0.9
 
     def build_model(self):
 
         # Input is number of qubits * maximum number swap gates that can be scheduled to decide the dimension of the circuit + the timestep entry
 
-        inputs = Input(shape=(self.input_size,))
-        dense = Dense(8, activation="relu")
-        x = dense(inputs)
-        x = Dense(8, activation="relu")(x)
-        outputs = Dense(10)(x)
+        input_size = 32
 
-        model = Model(inputs=inputs, outputs=outputs, name="swap_prediction")
-        model.summary()
+        model = Sequential()
+        model.add(Embedding(input_size, 32, input_length=10))
+        model.add(Dense(32, input_dim=input_size, activation='relu'))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(8, activation='linear'))
+        model.compile(loss='mse',
+                      optimizer=Adam(lr=self.learning_rate))
 
+        print(model.summary())
         return model
+    def save_model(self, model_name=None):
+        # Serialize model to JSON
+        model_json = self.current_model.to_json()
 
+        if model_name is not None:
+            filepath = "./models/" + model_name
+        else:
+            filepath = "./models/agent_model"
+
+        with open(filepath + ".json", "w") as json_file:
+            json_file.write(model_json)
+
+        # Serialize weights to HDF5
+        self.current_model.save_weights(filepath + ".h5")
+        print("Saved model to disk")
+
+    def load_model(self, model_name=None):
+        self.epsilon = self.epsilon_min
+
+        if model_name is not None:
+            filepath = "./models/" + model_name
+        else:
+            filepath = "./models/agent_model"
+
+        # Load json and create model
+        json_file = open(filepath + '.json', 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        self.current_model = model_from_json(loaded_model_json)
+
+        # Load weights into new model
+        self.current_model.load_weights(filepath + ".h5")
+        self.current_model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        print("Loaded model from disk")
+
+    def remember(self, state, reward, next_state, done):
+        """
+        Store experience in the memory tree
+        """
+        self.memory_tree.store((state, reward, next_state, done))
+
+    def update_target_model(self):
+        """
+        Copy weights from the current model to the target model
+        """
+        self.target_model.set_weights(self.current_model.get_weights())
+
+    def get_quality(self, current_state, next_state, action_chooser='model'):
+        neural_net_input = self.get_NN_input(current_state, next_state)
+
+        if action_chooser == 'model':
+            Qval = self.current_model.predict(neural_net_input)[0]
+            Qval = Qval.reshape(4,2)
+        elif action_chooser == 'target':
+            Qval = self.target_model.predict(neural_net_input)[0]
+            Qval = Qval.reshape(4, 2)
+
+        return Qval
     def model_train(self):
         model = self.build_model()
         state = State.state()
         # TODO: reshape circuit into state representation
-
-        x_train = state[:80]
-        y_train = state[:80]
-
-        x_test = state[80:]
-        y_test = state[80:]
-
-        x_train = x_train.reshape(600, self.input_size).astype("float32") / 255
-        x_test = x_test.reshape(100, self.input_size).astype("float32") / 255
 
         model.compile(loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       optimizer=Adam,
@@ -218,6 +283,7 @@ class Agent:
         """
        Action from MCTS added to the scheduled gates
        """
+
         # TODO: get this import working
         # mcts = monte_carlo_ts.MCTS(self, )
         # action = mcts.mcts(gate)
@@ -233,11 +299,10 @@ class Agent:
 if __name__ == "__main__":
 
     c = Circuit(4)
-    all = Allocation()
+    all = Allocation(c)
     con = all.connectivity()
+
     circ = c.get_circuit()
     s = State(c)
     a = Agent(c,s)
-    for i in circ:
-        # print(i)
-        a.schedule_gate(con, i)
+    a.build_model()
