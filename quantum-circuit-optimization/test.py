@@ -68,8 +68,7 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0):
             returns_sum[state] += G
             returns_count[state] += 1.0
             V[state] = returns_sum[state] / returns_count[state]
-            print(V)
-
+        print(V)
     return V
 
 
