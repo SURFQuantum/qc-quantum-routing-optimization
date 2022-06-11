@@ -156,18 +156,12 @@ class Agent:
 
     def __init__(self, circuit, state):
         self.state = state
-        self.learning_rate = 0.1
+        self.learning_rate = 0.01
         self.scheduled_gates = []
-        self.model = None
         self.n_qubits = circuit.n_qubits
         self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
-        self.memory_size = 500
-        self.target_model = self.build_model()
+        self.epochs = 50
 
-        self.gamma = 0.6
-        self.epsilon = 1.0
-        self.epsilon_min = 0.001
-        self.epsilon_decay = 0.9
 
     def build_model(self, input_size):
 
@@ -179,7 +173,7 @@ class Agent:
         model.add(Dense(8, activation='linear'))
         model.add(Reshape((1, 4, 2), input_shape=(8,)))
         model.compile(loss=CategoricalCrossentropy(from_logits=True),
-                      optimizer=adam_v2.Adam(learning_rate=0.01))
+                      optimizer=adam_v2.Adam(learning_rate=self.learning_rate))
 
         return model
 
@@ -188,7 +182,7 @@ class Agent:
         save_model(model, filepath)
 
     def model_train(self, model, state, y_train):
-        model.fit(state, y_train, verbose=2, epochs=50)
+        model.fit(state, y_train, verbose=2, epochs=self.epochs)
         self.save_model(model)
 
     def schedule_gate(self, connectivity, gate):
