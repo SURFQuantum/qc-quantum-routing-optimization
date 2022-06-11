@@ -185,8 +185,14 @@ class MCTS:
 
 ######### Uncomment for saving simulation ###############
             # y_true = np.array([[child.action]])
-            # state = np.array([self.fill_in_state()])
-
+            #
+            # state = self.fill_in_state()
+            # for i in range(len(state)):
+            #     if state[i] != 0:
+            #         state[i] = 1
+            #
+            # state = np.array(state)
+            #
             # save_state(state)
             # save_action(y_true)
 
@@ -200,7 +206,7 @@ class MCTS:
 
     # function for the result of the simulation
     def expand(self, root):
-        print(root.reward)
+        #print(root.reward)
         if root.reward != 100:
             end_state = False
             random_node = Node()

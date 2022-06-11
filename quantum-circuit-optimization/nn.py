@@ -47,7 +47,7 @@ model.add(Reshape((1,4,2), input_shape=(8,)))
 model.compile(loss=CategoricalCrossentropy(from_logits=True),
               optimizer=adam_v2.Adam(learning_rate=0.01))
 
-model.fit(state,y_train, verbose=2,epochs=50)
+model.fit(state,y_train, verbose=2,epochs=100)
 
 layer = Softmax()
 prediction = np.round(layer(model.predict(test)).numpy())
