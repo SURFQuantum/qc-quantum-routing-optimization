@@ -66,7 +66,7 @@ class Circuit:
 
         file = os.listdir(directory_path)
 
-        file_name = 'test_circuits/4gt4-v0_72.qasm'
+        file_name = 'test_circuits/test.qasm'
         for file_line in file:
             file_path = directory_path + file_line
 

@@ -180,20 +180,19 @@ class Agent:
     def build_model(self):
 
         # Input is number of qubits * maximum number swap gates that can be scheduled to decide the dimension of the circuit + the timestep entry
+        #
+        # input_size = 32
+        #
+        # model = Sequential()
+        # model.add(Embedding(input_size, 32, input_length=10))
+        # model.add(Dense(32, input_dim=input_size, activation='relu'))
+        # model.add(Dense(32, activation='relu'))
+        # model.add(Dense(32, activation='relu'))
+        # model.add(Dense(8, activation='linear'))
+        # model.compile(loss='mse',
+        #               optimizer=Adam(lr=self.learning_rate))
 
-        input_size = 32
-
-        model = Sequential()
-        model.add(Embedding(input_size, 32, input_length=10))
-        model.add(Dense(32, input_dim=input_size, activation='relu'))
-        model.add(Dense(32, activation='relu'))
-        model.add(Dense(32, activation='relu'))
-        model.add(Dense(8, activation='linear'))
-        model.compile(loss='mse',
-                      optimizer=Adam(lr=self.learning_rate))
-
-        print(model.summary())
-        return model
+        pass
     def save_model(self, model_name=None):
         # Serialize model to JSON
         model_json = self.current_model.to_json()
@@ -253,20 +252,8 @@ class Agent:
 
         return Qval
     def model_train(self):
-        model = self.build_model()
-        state = State.state()
-        # TODO: reshape circuit into state representation
 
-        model.compile(loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                      optimizer=Adam,
-                      metrics=["accuracy"]
-                      )
-        model.fit(x_train, y_train, batch_size=64, epochs=2, validation_split=0.2)
-        test_scores = model.evaluate(x_test, y_test, verbose=2)
-        print("Test loss:", test_scores[0])
-        print("Test accuracy:", test_scores[1])
-
-        return model
+        pass
 
     def schedule_gate(self, connectivity, gate):
         """
@@ -296,13 +283,13 @@ class Agent:
         pass
 
 
-if __name__ == "__main__":
-
-    c = Circuit(4)
-    all = Allocation(c)
-    con = all.connectivity()
-
-    circ = c.get_circuit()
-    s = State(c)
-    a = Agent(c,s)
-    a.build_model()
+# if __name__ == "__main__":
+#
+#     c = Circuit(4)
+#     all = Allocation(c)
+#     con = all.connectivity()
+#
+#     circ = c.get_circuit()
+#     s = State(c)
+#     a = Agent(c,s)
+#     a.build_model()

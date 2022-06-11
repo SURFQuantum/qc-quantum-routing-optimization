@@ -77,12 +77,12 @@ def is_in_connectivity(gate, connectivity):
 #
 # c = Circuit(4)
 # a = Environment(b, c)
-# test = [0, 1, 0]
+# train_data = [0, 1, 0]
 # a.circuit_matrix()
 #
 # con = b.connectivity()
 #
-# is_in_connectivity(test, con)
+# is_in_connectivity(train_data, con)
 
 
-# a.circuit_connectivity_compare(test)
+# a.circuit_connectivity_compare(train_data)

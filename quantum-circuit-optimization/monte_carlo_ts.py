@@ -229,7 +229,7 @@ class MCTS:
         self.backpropagation()
         return circuit
 
-c = Circuit(16)
+c = Circuit(4)
 s = State()
 print(s)
 all = Allocation(c)
@@ -237,12 +237,14 @@ con = all.connectivity()
 circ = c.get_circuit()
 
 a = Agent(c,s)
-while True:
-    broken_gate = a.schedule_gate(con, circ)
-    if broken_gate is None:
-        break
-    m = MCTS(c, all)
-    gate_to_fix = m.mcts(broken_gate)
-    a.add_swap(gate_to_fix)
+gate = (3,0,0)
 
-print("Fixed the cirquit")
+m = MCTS(c,all)
+m.mcts(gate)
+# while True:
+#     broken_gate = a.schedule_gate(con, circ)
+#     if broken_gate is None:
+#         break
+#     m = MCTS(c, all)
+#     gate_to_fix = m.mcts(broken_gate)
+#     a.add_swap(gate_to_fix)

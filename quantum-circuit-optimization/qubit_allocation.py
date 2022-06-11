@@ -13,7 +13,7 @@ class Allocation:
         # linear topology i.e. [A,B,C,D,E,F]
         # connectivity would be (0,1) (1,0) (1,2) (2,1) (2,3) (3,2)
         self.topology = None
-        self.qubits = 16
+        self.qubits = 4
         self.gates = circuit_class.get_circuit()
         self.allocation = []
 
@@ -100,16 +100,16 @@ class Allocation:
         """
         Random qubit allocation
         """
-        self.topology = (random.sample(range(self.qubits), self.qubits))
-        print(self.topology)
+        # self.topology = (random.sample(range(self.qubits), self.qubits))
+        # print(self.topology)
 
         """
         Linear sequential qubit allocation
         """
         # self-assigned qubit allocation linearly for testing
-        # # [0, 1, 2, 3, 4, 5]
-        # for i in range(self.qubits):
-        #     self.topology.append(i)
+        # # [0, 1, 2, 3]
+        for i in range(self.qubits):
+            self.topology.append(i)
 
         #TODO: get the outdegrees to match for the mapping
         #outdegree_graph, outdegree_top = self.weighted_graph()
