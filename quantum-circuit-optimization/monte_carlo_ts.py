@@ -1,7 +1,11 @@
 import itertools
 from math import log, sqrt, e, inf
+
+import numpy as np
+
 from qubit_allocation import swaps_moving_connectivity
 import random
+from save_data import save_state, save_action
 
 
 def pairwise(iterable):
@@ -39,10 +43,10 @@ class Node:
 
 class MCTS:
 
-    def __init__(self, connectivity, topology):
+    def __init__(self, connectivity, topology, state):
         # print(f'the state is {self.state}')# a circuit [[0,1,0],[1,0,0]] from first action
         # self.constraints = allocation_class.connectivity()
-        self.state = None
+        self.state = state
         self.reward = 0
         # self.action = 0  #
         self.parent = 0
@@ -66,6 +70,13 @@ class MCTS:
 
         # print(possible_action)
         return possible_action
+
+    def fill_in_state(self):
+        state = self.state.state(self.schedule_gates)
+        #print(state)
+        return state
+
+
 
     def ucb(self, node_i):
         """
@@ -170,6 +181,15 @@ class MCTS:
             self.root = child
 
             circuit.append(child.action)
+            self.schedule_gates.append(child.action)
+
+######### Uncomment for saving simulation ###############
+            # y_true = np.array([[child.action]])
+            # state = np.array([self.fill_in_state()])
+
+            # save_state(state)
+            # save_action(y_true)
+
             # Not more than 6 iterations for selection
             if timestep == N:
                 break
@@ -228,8 +248,8 @@ class MCTS:
     def simulate(self, root):
         pass
 
-    def mcts(self, gate, state):
-        self.state = state
+    def mcts(self, gate, schedule_gates):
+        self.schedule_gates = schedule_gates
         circuit, child = self.selection(gate)
         expansion_node = self.expand(child)
         if expansion_node is not None:

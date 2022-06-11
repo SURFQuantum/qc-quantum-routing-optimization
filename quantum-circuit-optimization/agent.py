@@ -127,8 +127,7 @@ class State:
 
 class Agent:
 
-    def __init__(self, circuit, state, MCTS, all):
-        self.state = state
+    def __init__(self, circuit, MCTS, all):
         self.learning_rate = 0.01
         self.scheduled_gates = []
         self.n_qubits = circuit.n_qubits
@@ -168,13 +167,13 @@ class Agent:
         else:
             schedule = self.scheduled_gates.copy()
             schedule.append(gate)
-            state = self.state.state(schedule)
-            swaps, self.connectivity = self.add_swap(gate,state)
+            # state = self.state.state(schedule)
+            swaps, self.connectivity = self.add_swap(gate,self.scheduled_gates)
             #print(swaps)
             for x in swaps:
                 self.scheduled_gates.append(x)
 
-        print(self.scheduled_gates)
+        #print(self.scheduled_gates)
 
     def add_swap(self, gate, state):
         """
@@ -189,8 +188,8 @@ if __name__ == "__main__":
     con = all.connectivity()
     topo = all.topology
     s = State(c)
-    mcts = MCTS(con,topo)
-    a = Agent(c,s, mcts, all)
+    mcts = MCTS(con,topo, s)
+    a = Agent(c,mcts, all)
     circ = c.get_circuit()
     print(f'Begin of the circuit {circ}')
     for i in circ:
