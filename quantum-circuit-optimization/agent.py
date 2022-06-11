@@ -1,20 +1,13 @@
-import keras.losses
-import numpy as np
-from keras.layers import Embedding
-from keras.models import Sequential
 from keras.optimizer_v2.adam import Adam
 from keras.models import model_from_json
-from PER_memory_tree import Memory
-
 import environment
-# from monte_carlo_ts import MCTS
-from environment import Environment
-from circuit import Circuit
-
-# class state defines the board and decides reward, end and next position
-from qubit_allocation import Allocation
-
-from keras import Input, Model
+import numpy as np
+from keras.layers import Dense, Reshape, Softmax
+from keras.losses import CategoricalCrossentropy
+from keras.models import Sequential, save_model, load_model
+from keras.optimizers import adam_v2
+import os
+from save_data import load_object
 from keras.layers.core import Dense
 
 import numpy
@@ -169,7 +162,6 @@ class Agent:
         self.n_qubits = circuit.n_qubits
         self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
         self.memory_size = 500
-        self.memory_tree = Memory(self.memory_size)
         self.target_model = self.build_model()
 
         self.gamma = 0.6
@@ -177,83 +169,27 @@ class Agent:
         self.epsilon_min = 0.001
         self.epsilon_decay = 0.9
 
-    def build_model(self):
+    def build_model(self, input_size):
 
-        # Input is number of qubits * maximum number swap gates that can be scheduled to decide the dimension of the circuit + the timestep entry
-        #
-        # input_size = 32
-        #
-        # model = Sequential()
-        # model.add(Embedding(input_size, 32, input_length=10))
-        # model.add(Dense(32, input_dim=input_size, activation='relu'))
-        # model.add(Dense(32, activation='relu'))
-        # model.add(Dense(32, activation='relu'))
-        # model.add(Dense(8, activation='linear'))
-        # model.compile(loss='mse',
-        #               optimizer=Adam(lr=self.learning_rate))
+        model = Sequential()
 
-        pass
-    def save_model(self, model_name=None):
-        # Serialize model to JSON
-        model_json = self.current_model.to_json()
+        model.add(Dense(10, input_dim=input_size, activation='relu'))
+        model.add(Dense(10, activation='relu'))
+        model.add(Dense(10, activation='relu'))
+        model.add(Dense(8, activation='linear'))
+        model.add(Reshape((1, 4, 2), input_shape=(8,)))
+        model.compile(loss=CategoricalCrossentropy(from_logits=True),
+                      optimizer=adam_v2.Adam(learning_rate=0.01))
 
-        if model_name is not None:
-            filepath = "./models/" + model_name
-        else:
-            filepath = "./models/agent_model"
+        return model
 
-        with open(filepath + ".json", "w") as json_file:
-            json_file.write(model_json)
+    def save_model(self, model):
+        filepath = './saved_model'
+        save_model(model, filepath)
 
-        # Serialize weights to HDF5
-        self.current_model.save_weights(filepath + ".h5")
-        print("Saved model to disk")
-
-    def load_model(self, model_name=None):
-        self.epsilon = self.epsilon_min
-
-        if model_name is not None:
-            filepath = "./models/" + model_name
-        else:
-            filepath = "./models/agent_model"
-
-        # Load json and create model
-        json_file = open(filepath + '.json', 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        self.current_model = model_from_json(loaded_model_json)
-
-        # Load weights into new model
-        self.current_model.load_weights(filepath + ".h5")
-        self.current_model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
-        print("Loaded model from disk")
-
-    def remember(self, state, reward, next_state, done):
-        """
-        Store experience in the memory tree
-        """
-        self.memory_tree.store((state, reward, next_state, done))
-
-    def update_target_model(self):
-        """
-        Copy weights from the current model to the target model
-        """
-        self.target_model.set_weights(self.current_model.get_weights())
-
-    def get_quality(self, current_state, next_state, action_chooser='model'):
-        neural_net_input = self.get_NN_input(current_state, next_state)
-
-        if action_chooser == 'model':
-            Qval = self.current_model.predict(neural_net_input)[0]
-            Qval = Qval.reshape(4,2)
-        elif action_chooser == 'target':
-            Qval = self.target_model.predict(neural_net_input)[0]
-            Qval = Qval.reshape(4, 2)
-
-        return Qval
-    def model_train(self):
-
-        pass
+    def model_train(self, model, state, y_train):
+        model.fit(state, y_train, verbose=2, epochs=50)
+        self.save_model(model)
 
     def schedule_gate(self, connectivity, gate):
         """
