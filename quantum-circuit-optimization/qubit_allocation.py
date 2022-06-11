@@ -12,7 +12,7 @@ class Allocation:
     def __init__(self, circuit_class):
         # linear topology i.e. [A,B,C,D,E,F]
         # connectivity would be (0,1) (1,0) (1,2) (2,1) (2,3) (3,2)
-        self.topology = None
+        self.topology = []
         self.qubits = 4
         self.gates = circuit_class.get_circuit()
         self.allocation = []
@@ -240,6 +240,19 @@ class Allocation:
         return connectivity_set  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
 
 
+def swaps_moving_connectivity(topology):
+    connectivity_set = []
+
+    for i, obj in enumerate(topology):
+        if i == 0:
+            connectivity_set.append((obj, topology[i + 1]))
+        elif i == (len(topology) - 1):
+            connectivity_set.append((obj, topology[i - 1]))
+        else:
+            connectivity_set.append((obj, topology[i - 1]))
+            connectivity_set.append((obj, topology[i + 1]))
+    return connectivity_set
+
+
 c = Circuit(4)
 a = Allocation(c)
-

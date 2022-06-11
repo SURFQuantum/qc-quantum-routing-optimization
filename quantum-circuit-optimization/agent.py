@@ -7,9 +7,12 @@ from keras.losses import CategoricalCrossentropy
 from keras.models import Sequential, save_model, load_model
 from keras.optimizers import adam_v2
 import os
+
+from circuit import Circuit
+from monte_carlo_ts import MCTS
 from save_data import load_object
 from keras.layers.core import Dense
-
+import qubit_allocation
 import numpy
 
 
@@ -28,25 +31,12 @@ class State:
             for j in i:
                 if j > max:
                     max = j
-
         max += 1
         return max
 
-    # TODO: get reward from MCTS
-    def get_reward(self):
-        return 0
 
     def circuit_length(self, circuit):
         self.length = len(circuit)
-
-    # TODO: check this function
-    def is_end_circuit(self, circuit_i):
-        if circuit_i == self.length - 1:
-            self.isEnd = True
-
-    # TODO: write new action
-    def next_position(self, action):
-        return 0
 
     def check(self, i, q):
         if i in q:
@@ -87,7 +77,7 @@ class State:
         q3| 12 | 10 | 0| 0  | 0
 
         state is [11. 10. 13. 12. 13.  0.  0. 10. 12.  0. 10.  0.  0.  0.  0.  0.  0.  0.
-        0.  0.  0.  0.  0.  0.  0.  0.  0.  0.  5.]
+        0.  0.  0.  0.  0.  0.  0.  0.  0.  0.]
 
         output = [ 0.  1.  0. 1.]
         """
@@ -103,10 +93,10 @@ class State:
             for j in range(0,len(state), self.n_qubits):
                 qu.append(j+i)
             q.append(qu)
-        print(q)
+        # print(q)
 
         # check in what row the qubits are
-        print(f'scheduled gate are {scheduled_gates}')
+        # print(f'scheduled gate are {scheduled_gates}')
         for i in scheduled_gates:
             for h in range(self.n_qubits):
                 qubit_1 = self.check(i[0], q[h])
@@ -132,35 +122,20 @@ class State:
                         state[j] = i[1] + 20
                         state[k] = i[0] + 20
                         break
-
-        # find where in the circuit there are no more gates
-        runs = self.zero_runs(state)
-        last_item = runs[-1]
-        print(f' gates end at {last_item}')
-
-        # calculate number of timesteps
-        for i in q:
-            ts = self.check(last_item[0],i)
-            if ts:
-                timestep = i.index(last_item[0]) + 1
-                break
-
-        print(f'number of timesteps are {timestep}')
-        position = len(state) - 1
-        state[position] = timestep
-        print(f'the state is {state}')
         return state
 
 
 class Agent:
 
-    def __init__(self, circuit, state):
+    def __init__(self, circuit, state, MCTS, all):
         self.state = state
         self.learning_rate = 0.01
         self.scheduled_gates = []
         self.n_qubits = circuit.n_qubits
         self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
         self.epochs = 50
+        self.mcts = MCTS
+        self.connectivity = all.connectivity()
 
 
     def build_model(self, input_size):
@@ -174,7 +149,6 @@ class Agent:
         model.add(Reshape((1, 4, 2), input_shape=(8,)))
         model.compile(loss=CategoricalCrossentropy(from_logits=True),
                       optimizer=adam_v2.Adam(learning_rate=self.learning_rate))
-
         return model
 
     def save_model(self, model):
@@ -185,41 +159,44 @@ class Agent:
         model.fit(state, y_train, verbose=2, epochs=self.epochs)
         self.save_model(model)
 
-    def schedule_gate(self, connectivity, gate):
+    def schedule_gate(self, gate):
         """
         Adds gate to self if gate is compatible with connectivity, otherwise returns False, indication to perform MCTS
         """
-        if environment.is_in_connectivity(gate, connectivity):
+        if environment.is_in_connectivity(gate, self.connectivity):
             self.scheduled_gates.append(gate)
         else:
-            schedule = self.scheduled_gates
+            schedule = self.scheduled_gates.copy()
             schedule.append(gate)
-            self.state.state(schedule)
+            state = self.state.state(schedule)
+            swaps, self.connectivity = self.add_swap(gate,state)
+            #print(swaps)
+            for x in swaps:
+                self.scheduled_gates.append(x)
 
-    def add_swap(self, gate):
+        print(self.scheduled_gates)
+
+    def add_swap(self, gate, state):
         """
        Action from MCTS added to the scheduled gates
        """
+        return self.mcts.mcts(gate,state)
 
-        # TODO: get this import working
-        # mcts = monte_carlo_ts.MCTS(self, )
-        # action = mcts.mcts(gate)
-        # for i in action:
-        #    self.scheduled_gates.append(i)
-        print(self.scheduled_gates)
+if __name__ == "__main__":
 
-    # TODO: print out tree of MCTS
-    def show_tree(self):
-        pass
+    c = Circuit(4)
+    all = qubit_allocation.Allocation(c)
+    con = all.connectivity()
+    topo = all.topology
+    s = State(c)
+    mcts = MCTS(con,topo)
+    a = Agent(c,s, mcts, all)
+    circ = c.get_circuit()
+    print(f'Begin of the circuit {circ}')
+    for i in circ:
+        a.schedule_gate(i)
+
+    print('Circuit fully scheduled')
 
 
-# if __name__ == "__main__":
-#
-#     c = Circuit(4)
-#     all = Allocation(c)
-#     con = all.connectivity()
-#
-#     circ = c.get_circuit()
-#     s = State(c)
-#     a = Agent(c,s)
-#     a.build_model()
+

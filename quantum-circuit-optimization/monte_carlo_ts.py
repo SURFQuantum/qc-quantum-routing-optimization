@@ -1,11 +1,7 @@
 import itertools
 from math import log, sqrt, e, inf
-from sre_parse import State
-
+from qubit_allocation import swaps_moving_connectivity
 import random
-from agent import Agent
-from circuit import Circuit
-from qubit_allocation import Allocation
 
 
 def pairwise(iterable):
@@ -43,18 +39,20 @@ class Node:
 
 class MCTS:
 
-    def __init__(self, circuit, allocation):
+    def __init__(self, connectivity, topology):
         # print(f'the state is {self.state}')# a circuit [[0,1,0],[1,0,0]] from first action
         # self.constraints = allocation_class.connectivity()
+        self.state = None
         self.reward = 0
         # self.action = 0  #
         self.parent = 0
         self.N = 0
         self.n = 0
-        self.n_qubits = circuit.n_qubits
+        self.n_qubits = 4
         #self.n_qubits = 6
         self.root = Node()
-        self.connectivity = allocation.connectivity()
+        self.connectivity = connectivity
+        self.topology = topology
         self.node_evaluator = lambda child, montecarlo: None
 
     # Node is a circuit with gates, parent node should change for every action, child node is the possible action
@@ -76,6 +74,22 @@ class MCTS:
         ucb = node_i.reward + sqrt(2) * (sqrt(log(node_i.parent_visits + e + (10 ** (-6))) / (node_i.child_visits + 10 ** (-1))))
         return ucb
 
+    def swap_circuit(self,a,b,gate):
+        for x in range(len(gate)):
+            if gate[x] == a:
+                gate[x] = b
+            elif gate[x] == b:
+                gate[x] = a
+        gate.append(0)
+
+        for x in range(len(self.topology)):
+            if self.topology[x] == a:
+                self.topology[x] = b
+            elif self.topology[x] == b:
+                self.topology[x] = a
+        return gate
+
+
     def swap_schedule(self, i, end_state, gate):
 
         a, b, _ = i
@@ -86,12 +100,7 @@ class MCTS:
         new_gate = [gate[0], gate[1]]
 
         # Swap the nodes and change the CNOT-gate
-        for x in range(len(new_gate)):
-            if new_gate[x] == a:
-                new_gate[x] = b
-            elif new_gate[x] == b:
-                new_gate[x] = a
-        new_gate.append(0)
+        new_gate = self.swap_circuit(a,b,new_gate)
 
         #print(f'new gate is {new_gate}')
         #print(f' new CNOT-gate position {new_gate}')
@@ -166,7 +175,7 @@ class MCTS:
                 break
 
         circuit.append(gate)
-        print(f' Circuit is {circuit}')
+        #print(f' Circuit is {circuit}')
         return circuit, child
 
     # function for the result of the simulation
@@ -219,28 +228,30 @@ class MCTS:
     def simulate(self, root):
         pass
 
-    def mcts(self, gate):
+    def mcts(self, gate, state):
+        self.state = state
         circuit, child = self.selection(gate)
         expansion_node = self.expand(child)
         if expansion_node is not None:
             circuit[-1] = expansion_node.action
             circuit.append(expansion_node.cnot)
-        print(circuit)
+
+        self.connectivity = swaps_moving_connectivity(self.topology)
         self.backpropagation()
-        return circuit
+        return circuit, self.connectivity
 
-c = Circuit(4)
-s = State()
-print(s)
-all = Allocation(c)
-con = all.connectivity()
-circ = c.get_circuit()
-
-a = Agent(c,s)
-gate = (3,0,0)
-
-m = MCTS(c,all)
-m.mcts(gate)
+# c = Circuit(4)
+# s = State()
+# print(s)
+# all = Allocation(c)
+# con = all.connectivity()
+# circ = c.get_circuit()
+# 
+# a = Agent(c,s)
+# gate = (3,0,0)
+# 
+# m = MCTS(c,all)
+# m.mcts(gate)
 # while True:
 #     broken_gate = a.schedule_gate(con, circ)
 #     if broken_gate is None:
