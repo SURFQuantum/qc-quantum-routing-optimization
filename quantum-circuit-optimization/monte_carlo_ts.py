@@ -184,17 +184,15 @@ class MCTS:
             self.schedule_gates.append(child.action)
 
 ######### Uncomment for saving simulation ###############
-            # y_true = np.array([[child.action]])
-            #
-            # state = self.fill_in_state()
-            # for i in range(len(state)):
-            #     if state[i] != 0:
-            #         state[i] = 1
-            #
-            # state = np.array(state)
-            #
-            # save_state(state)
-            # save_action(y_true)
+            y_true = np.array(child.action)
+
+            state = self.fill_in_state()
+            for i in range(len(state)):
+                if state[i] != 0:
+                    state[i] = 1
+
+            save_state(state)
+            save_action(y_true)
 
             # Not more than 6 iterations for selection
             if timestep == N:

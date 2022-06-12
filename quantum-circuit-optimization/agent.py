@@ -83,7 +83,8 @@ class State:
         """
 
         # numpy vector full of zeros
-        state = np.zeros(self.n_qubits * ((len(scheduled_gates)) + (self.n_qubits - 1)) + 1)
+        # state = np.zeros(self.n_qubits * ((len(scheduled_gates)) + (self.n_qubits - 1)) + 1)
+        state = np.zeros(40)
         q = []
 
         # Creating matrix with the position numbers, timestep on the columns
