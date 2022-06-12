@@ -1,3 +1,6 @@
+import pickle
+from os.path import exists
+
 from keras.optimizer_v2.adam import Adam
 from keras.models import model_from_json
 import environment
@@ -10,7 +13,7 @@ import os
 
 from circuit import Circuit
 from monte_carlo_ts import MCTS
-from save_data import load_object
+from save_data import load_object, save_circuit
 from keras.layers.core import Dense
 import qubit_allocation
 import numpy
@@ -136,6 +139,8 @@ class Agent:
         self.epochs = 50
         self.mcts = MCTS
         self.connectivity = all.connectivity()
+        self.swap = False
+        self.logic = [0,1,2,3]
 
 
     def build_model(self, input_size):
@@ -163,9 +168,11 @@ class Agent:
         """
         Adds gate to self if gate is compatible with connectivity, otherwise returns False, indication to perform MCTS
         """
+        # while not self.swap:
         if environment.is_in_connectivity(gate, self.connectivity):
             self.scheduled_gates.append(gate)
         else:
+            self.swap = True
             schedule = self.scheduled_gates.copy()
             schedule.append(gate)
             # state = self.state.state(schedule)
@@ -173,6 +180,8 @@ class Agent:
             #print(swaps)
             for x in swaps:
                 self.scheduled_gates.append(x)
+
+        #gate,self.logic = self.mcts.swap_circuit()
 
         #print(self.scheduled_gates)
 
@@ -184,19 +193,27 @@ class Agent:
 
 if __name__ == "__main__":
 
-    c = Circuit(4)
-    all = qubit_allocation.Allocation(c)
-    con = all.connectivity()
-    topo = all.topology
-    s = State(c)
-    mcts = MCTS(con,topo, s)
-    a = Agent(c,mcts, all)
-    circ = c.get_circuit()
-    print(f'Begin of the circuit {circ}')
-    for i in circ:
-        a.schedule_gate(i)
+    for i in range(50):
+        c = Circuit(4)
+        all = qubit_allocation.Allocation(c)
+        con = all.connectivity()
+        topo = all.topology
+        s = State(c)
+        mcts = MCTS(con,topo, s)
+        a = Agent(c,mcts, all)
+        circ = c.get_circuit()
+        print(f'Begin of the circuit {circ}')
+        for i in circ:
+            a.schedule_gate(i)
+        #print(a.scheduled_gates)
 
-    print('Circuit fully scheduled')
+        save_circuit(a.scheduled_gates)
+        directory = 'generated_circuits/'
+
+        for filename in sorted(os.listdir(directory)):
+            cir = load_object(directory+filename)
+            print(cir)
+        print('Circuit fully scheduled')
 
 
 

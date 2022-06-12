@@ -51,7 +51,7 @@ model.add(Reshape((1,4,2), input_shape=(8,)))
 model.compile(loss=CategoricalCrossentropy(from_logits=True),
               optimizer=adam_v2.Adam(learning_rate=0.01))
 
-history = model.fit(state,y_train, verbose=2,epochs=100)
+history = model.fit(state,y_train, verbose=2,epochs=110)
 print(history.history.keys())
 
 layer = Softmax()
@@ -62,7 +62,7 @@ print(prediction)
 save_model(model, filepath)
 
 plt.plot(history.history['loss'])
-plt.title('model loss')
+plt.title('model loss on 400 simulations')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.show()

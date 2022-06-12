@@ -25,6 +25,17 @@ def save_state(obj):
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
 
+def save_circuit(obj):
+
+    count = 0
+    try:
+        while exists(f"generated_circuits/circuit4.pickle_{count}"):
+            count+=1
+        with open(f"generated_circuits/circuit4.pickle_{count}", "wb") as f:
+            pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+
 def load_object(filename):
     try:
         with open(filename, "rb") as f:
@@ -48,5 +59,7 @@ Test Data
 # state = np.array([1,1,1,1,1,0,0,1,1,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0])
 # #
 # action = np.array([[[1,0],[0,1],[1,0],[0,1]]])
-# save_state(state)[[1,0],[1,0],[0,1],[0,1]]], [[[1,0],[0,1],[1,0],[0,1]]]])
-# save_action(action)
+# # save_state(state)[[1,0],[1,0],[0,1],[0,1]]], [[[1,0],[0,1],[1,0],[0,1]]]])
+# # save_action(action)
+# t = np.array([[0, 1, 0], [3, 2, 0], [3, 0, 0], [1, 0, 1], [0, 3, 1], [1, 2, 0], [0, 3, 1], [3, 2, 1], [1, 0, 1], [0, 3, 0], [1, 0, 0], [2, 3, 0], [3, 0, 0], [0, 3, 1], [3, 2, 0]])
+# save_circuit(action)

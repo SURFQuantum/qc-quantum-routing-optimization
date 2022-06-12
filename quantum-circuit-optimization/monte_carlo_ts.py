@@ -1,4 +1,4 @@
-import itertools
+from itertools import tee, permutations
 from math import log, sqrt, e, inf
 
 import numpy as np
@@ -10,7 +10,7 @@ from save_data import save_state, save_action
 
 def pairwise(iterable):
     # pairwise('ABCDEFG') --> AB BC CD DE EF FG
-    a, b = itertools.tee(iterable)
+    a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
 
@@ -54,6 +54,7 @@ class MCTS:
         self.n = 0
         self.n_qubits = 4
         #self.n_qubits = 6
+        self.logic = [0,1,2,3]
         self.root = Node()
         self.connectivity = connectivity
         self.topology = topology
@@ -64,9 +65,15 @@ class MCTS:
     @property
     def action(self):
         possible_action = []
-        for i, j in pairwise(list(range(self.n_qubits))):
-            swap_gate = [i, j, 1]
-            possible_action.append(swap_gate)
+        for i in permutations(self.topology,2):
+            if i in self.connectivity:
+                q = [0,0,1]
+                i = list(i)
+                q[0], q[1] = i[1], i[0]
+                swap_gate = list(i)
+                swap_gate.append(1)
+                if swap_gate not in possible_action and q not in possible_action:
+                    possible_action.append(swap_gate)
 
         # print(possible_action)
         return possible_action
@@ -86,19 +93,24 @@ class MCTS:
         return ucb
 
     def swap_circuit(self,a,b,gate):
+
         for x in range(len(gate)):
             if gate[x] == a:
                 gate[x] = b
             elif gate[x] == b:
                 gate[x] = a
+        for x in range(len(self.logic)):
+            if self.logic[x] ==a:
+                self.logic[x] = b
+            elif self.logic[x] ==b:
+                self.logic[x] = a
         gate.append(0)
-
-        for x in range(len(self.topology)):
-            if self.topology[x] == a:
-                self.topology[x] = b
-            elif self.topology[x] == b:
-                self.topology[x] = a
-        return gate
+        # for x in range(len(self.topology)):
+        #     if self.topology[x] == a:
+        #         self.topology[x] = b
+        #     elif self.topology[x] == b:
+        #         self.topology[x] = a
+        return gate, self.logic
 
 
     def swap_schedule(self, i, end_state, gate):
@@ -111,7 +123,8 @@ class MCTS:
         new_gate = [gate[0], gate[1]]
 
         # Swap the nodes and change the CNOT-gate
-        new_gate = self.swap_circuit(a,b,new_gate)
+        new_gate, _ = self.swap_circuit(a,b,new_gate)
+
 
         #print(f'new gate is {new_gate}')
         #print(f' new CNOT-gate position {new_gate}')
@@ -154,7 +167,7 @@ class MCTS:
         self.root.action = gate
         end_state = False
         timestep = 0
-        N = 3 #number of max iterations
+        N = 6 #number of max iterations
 
         # Iterate through the children until the CNOT is operable
         while not end_state:
@@ -162,7 +175,7 @@ class MCTS:
             for i in action:
                 child = Node()
                 child.action = i
-                end_state, reward, new_gate = self.swap_schedule(child.action, end_state, gate)
+                end_state, reward, new_gate= self.swap_schedule(child.action, end_state, gate)
                 child.ucb = self.ucb(child)
                 child.cnot = new_gate
                 if end_state:
@@ -172,7 +185,6 @@ class MCTS:
                     break
                 child.reward = reward
                 child.child_visits = timestep
-
                 self.root.add_child(child)
 
             # Find the best child
@@ -180,19 +192,23 @@ class MCTS:
             gate = child.cnot
             self.root = child
 
-            circuit.append(child.action)
-            self.schedule_gates.append(child.action)
+            if circuit and child.action not in circuit:
+                circuit.append(child.action)
+                self.schedule_gates.append(child.action)
+            elif not circuit:
+                circuit.append(child.action)
+                self.schedule_gates.append(child.action)
 
 ######### Uncomment for saving simulation ###############
-            y_true = np.array(child.action)
-
-            state = self.fill_in_state()
-            for i in range(len(state)):
-                if state[i] != 0:
-                    state[i] = 1
-
-            save_state(state)
-            save_action(y_true)
+            # y_true = np.array(child.action)
+            #
+            # state = self.fill_in_state()
+            # for i in range(len(state)):
+            #     if state[i] != 0:
+            #         state[i] = 1
+            #
+            # save_state(state)
+            # save_action(y_true)
 
             # Not more than 6 iterations for selection
             if timestep == N:
@@ -253,7 +269,7 @@ class MCTS:
         pass
 
     def mcts(self, gate, schedule_gates):
-        self.schedule_gates = schedule_gates
+        self.schedule_gates = schedule_gates.copy()
         circuit, child = self.selection(gate)
         expansion_node = self.expand(child)
         if expansion_node is not None:

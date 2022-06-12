@@ -103,13 +103,15 @@ class Allocation:
         # self.topology = (random.sample(range(self.qubits), self.qubits))
         # print(self.topology)
 
+        self.topology = [1, 0, 3, 2]
+
         """
         Linear sequential qubit allocation
         """
         # self-assigned qubit allocation linearly for testing
         # # [0, 1, 2, 3]
-        for i in range(self.qubits):
-            self.topology.append(i)
+        # for i in range(self.qubits):
+        #     self.topology.append(i)
 
         #TODO: get the outdegrees to match for the mapping
         #outdegree_graph, outdegree_top = self.weighted_graph()
