@@ -43,7 +43,7 @@ def perform_run(initial_locations, model_number):
 
     environment = GridEnvironment(4,4,test_set_circuits[0].to_dqn_rep())
     agent = DQNAgent(environment)
-    agent.save_model(model_name)
+    agent.load_model(model_name)
 
     average_test_time = 0.0
     average_circuit_depth_overhead = 0.0

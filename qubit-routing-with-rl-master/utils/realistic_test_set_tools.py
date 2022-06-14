@@ -11,18 +11,20 @@ def import_test_set():
 
     directory_path = "../realistic_test_set/"
 
-    files = os.listdir(directory_path)
-    qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
+    # files = os.listdir(directory_path)
+    # qasm_files = list(filter(lambda file_name: len(file_name) > 5 and file_name[-5:] == ".qasm", files))
+
+    file = os.listdir(directory_path)
 
     circuits = []
 
-    for i, file_name in enumerate(qasm_files):
-        file_path = directory_path + file_name
+    file_name = '../realistic_test_set/test.qasm'
+    for file_line in file:
+        file_path = directory_path + file_line
 
         if os.path.getsize(file_path) > 10000:
             continue
-
-        qiskit_circuit = QuantumCircuit.from_qasm_file(file_path)
+        qiskit_circuit = QuantumCircuit.from_qasm_file(file_name)
 
         gates = []
 
@@ -39,8 +41,8 @@ def import_test_set():
 
         circuits.append(circuit)
 
-        if i % int(len(qasm_files) / 3) == 0:
-            print('Import ' + str(int(100 * i / len(qasm_files))) + '% complete')
+        # if i % int(len(qasm_files) / 3) == 0:
+        #     print('Import ' + str(int(100 * i / len(qasm_files))) + '% complete')
 
     return list(filter(lambda c: c.depth() < 200, circuits))
 

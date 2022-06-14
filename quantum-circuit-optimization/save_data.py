@@ -29,9 +29,9 @@ def save_circuit(obj):
 
     count = 0
     try:
-        while exists(f"qiskit_depth/circuit_qiskit4.pickle_{count}"):
+        while exists(f"tket_depth/circuit_tket4.pickle_{count}"):
             count+=1
-        with open(f"qiskit_depth/circuit_qiskit4.pickle_{count}", "wb") as f:
+        with open(f"tket_depth/circuit_tket4.pickle_{count}", "wb") as f:
             pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)

@@ -64,9 +64,9 @@ class DQNAgent:
         model_json = self.current_model.to_json()
 
         if model_name is not None:
-            filepath = "./models/" + model_name
+            filepath = "../models/" + model_name
         else:
-            filepath = "./models/agent_model"
+            filepath = "../models/agent_model"
 
         with open(filepath + ".json", "w") as json_file:
             json_file.write(model_json)
@@ -79,9 +79,9 @@ class DQNAgent:
         self.epsilon = self.epsilon_min
 
         if model_name is not None:
-            filepath = "./models/" + model_name
+            filepath = "../models/" + model_name
         else:
-            filepath = "./models/agent_model"
+            filepath = "../models/agent_model"
 
         # Load json and create model
         json_file = open(filepath + '.json', 'r')

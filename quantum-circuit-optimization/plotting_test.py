@@ -16,23 +16,23 @@ from collections import defaultdict
 #      (19,22,True),(19,21,True),(19,23,True), (19,24,False),(19,25,False),(19,26,False),(19,27,False),(19,28,False)]
 from save_data import load_object
 
-directory = 'benchmark/qiskit_depth/'
+directory = 'benchmark/tket_depth/'
 V = []
 
 for filename in sorted(os.listdir(directory)):
-    if 'circuit_qiskit.pickle_' in filename:
+    if 'circuit_tket.pickle_' in filename:
         cir = load_object(directory+filename)
         V.append((9,cir,True))
-    elif 'circuit_qiskit1.pickle_' in filename:
+    elif 'circuit_tket1.pickle_' in filename:
         cir = load_object(directory+filename)
         V.append((6,cir,True))
-    elif 'circuit_qiskit2.pickle_' in filename:
+    elif 'circuit_tket2.pickle_' in filename:
         cir = load_object(directory+filename)
         V.append((12,cir,True))
-    elif 'circuit_qiskit3.pickle_' in filename:
+    elif 'circuit_tket3.pickle_' in filename:
         cir = load_object(directory+filename)
         V.append((15,cir,True))
-    elif 'circuit_qiskit4.pickle_' in filename:
+    elif 'circuit_tket4.pickle_' in filename:
         cir = load_object(directory+filename)
         V.append((18,cir,True))
 

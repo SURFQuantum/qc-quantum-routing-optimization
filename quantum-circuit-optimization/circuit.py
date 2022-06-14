@@ -72,8 +72,6 @@ class Circuit:
 
             if os.path.getsize(file_path) > 10000:
                 continue
-
-            # TODO: read lines from file instead of from_qasm_file
             qiskit_circuit = QuantumCircuit.from_qasm_file(file_name)
 
             gates = []
