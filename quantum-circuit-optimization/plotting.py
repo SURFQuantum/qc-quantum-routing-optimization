@@ -56,7 +56,7 @@ def plot_value_function(V, title="Value Function"):
         fig.colorbar(surf)
         plt.show()
 
-    plot_surface(X, Y, Z_noace, "{} (50 simulations per circuit)".format(title))
+    plot_surface(X, Y, Z_noace, "{} (50 Qiskit simulations per circuit)".format(title))
     #plot_surface(X, Y, Z_ace, "{} (Acceptable depth)".format(title))
 
 

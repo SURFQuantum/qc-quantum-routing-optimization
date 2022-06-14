@@ -208,7 +208,7 @@ if __name__ == "__main__":
         #print(a.scheduled_gates)
 
         save_circuit(a.scheduled_gates)
-        directory = 'generated_circuits/'
+        directory = 'qiskit_depth/'
 
         for filename in sorted(os.listdir(directory)):
             cir = load_object(directory+filename)

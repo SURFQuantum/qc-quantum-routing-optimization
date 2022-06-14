@@ -16,25 +16,25 @@ from collections import defaultdict
 #      (19,22,True),(19,21,True),(19,23,True), (19,24,False),(19,25,False),(19,26,False),(19,27,False),(19,28,False)]
 from save_data import load_object
 
-directory = 'generated_circuits/'
+directory = 'benchmark/qiskit_depth/'
 V = []
 
 for filename in sorted(os.listdir(directory)):
-    if 'circuit.pickle_' in filename:
+    if 'circuit_qiskit.pickle_' in filename:
         cir = load_object(directory+filename)
-        V.append((9,len(cir),True))
-    elif 'circuit1.pickle_' in filename:
+        V.append((9,cir,True))
+    elif 'circuit_qiskit1.pickle_' in filename:
         cir = load_object(directory+filename)
-        V.append((6,len(cir),True))
-    elif 'circuit2.pickle_' in filename:
+        V.append((6,cir,True))
+    elif 'circuit_qiskit2.pickle_' in filename:
         cir = load_object(directory+filename)
-        V.append((12,len(cir),True))
-    elif 'circuit3.pickle_' in filename:
+        V.append((12,cir,True))
+    elif 'circuit_qiskit3.pickle_' in filename:
         cir = load_object(directory+filename)
-        V.append((15,len(cir),True))
-    elif 'circuit4.pickle_' in filename:
+        V.append((15,cir,True))
+    elif 'circuit_qiskit4.pickle_' in filename:
         cir = load_object(directory+filename)
-        V.append((18,len(cir),True))
+        V.append((18,cir,True))
 
 print(V)
 P = defaultdict(float)
