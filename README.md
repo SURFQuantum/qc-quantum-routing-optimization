@@ -1,15 +1,17 @@
 # Qubit Routing with Reinforcement Learning (RL)
 
-Check [here](https://github.com/Lizaterdag/quantum-routing-optimization/tree/main/quantum-circuit-optimization) for my code developed with RL and Monte Carlo Tree Search
-
-This repository is part of a Bachelor internship thesis on Quantum Routing Optimisation for the company SURF. It contains code for a qubit routing procedure that makes use of RL. Originally developed by Matteo G. Pozzi for the University of Cambridge Computer Laboratory. A paper on the subject is available here: https://arxiv.org/abs/2007.15957. 
-This repository also contains notes and presentations from the meetings at SURF and the original thesis. 
+This repository is part of a Bachelor internship thesis on Quantum Circuit Routing Optimization for the company SURF. It contains code for a qubit routing procedure that makes use of MCTS guided by a RL model. Thesis paper can be found on [here](https://github.com/Lizaterdag/quantum-routing-optimization/blob/main/Bachelor_Thesis_Liza_Darwesh_500793232_Amsterdam_University_of_Applied_Science.pdf)
+This repository also contains notes and presentations from the meetings at SURF.
 
 ## Intro to Qubit Routing
 
-Before quantum circuits can be executed on quantum architectures, they must be be modified to satisfy the contrains of the target topology. Specifically, a quantum architecture has a connectivity graph, consisting of physical qubits ("nodes") and links between them. (Logical) qubits inhabit the nodes, and two-qubit gates may only occur between qubits on adjacent nodes in the topology. SWAP gates must be inserted to move the qubits and satisfy such constraints - this process is known as "routing".
+Before quantum circuits can be executed on quantum architectures, they must be be modified to satisfy the contrains of the target topology. Specifically, a quantum architecture has a connectivity graph, consisting of physical qubits ("nodes") and links between them. (Logical) qubits inhabit the nodes, and two-qubit gates may only occur between qubits on adjacent nodes in the topology. SWAP-gates must be inserted to move the qubits and satisfy such constraints - this process is known as "routing".
 
-This project uses RL to perform the task of routing qubits. 
+## The Algorithm
+
+![alt text](https://github.com/Lizaterdag/quantum-routing-optimization/blob/main/img/workflow.png)
+
+<!-- This project uses RL to perform the task of routing qubits. 
 
 ![alt text](https://github.com/Lizaterdag/quantum-routing-optimisation/blob/main/img/RL.png)
 
@@ -66,4 +68,4 @@ For a visualization of the qubit alloction and circuit routing, one may use the 
 
 ## Python package versions
 
-This code requires **Python 3.7**, as well as specific versions of a few libraries in order to run. I believe there have been some minor changes to those libraries in recent times, and I have not yet had the chance to update the code in response. I recommend installing the relevant packages by running `pip install -r requirements.txt`, or you could even try fixing the code yourself to be compatible with the latest versions.
+This code requires **Python 3.7**, as well as specific versions of a few libraries in order to run. I believe there have been some minor changes to those libraries in recent times, and I have not yet had the chance to update the code in response. I recommend installing the relevant packages by running `pip install -r requirements.txt`, or you could even try fixing the code yourself to be compatible with the latest versions. -->
