@@ -1,11 +1,10 @@
 import numpy as np
-from keras.layers import Dense, Reshape, Softmax
-from keras.losses import CategoricalCrossentropy
-from keras.models import Sequential, save_model, load_model
-from keras.optimizers import adam_v2
 import matplotlib.pyplot as plt
 import os
 from save_data import load_object
+import torch.nn as nn
+from torch.nn import Linear, Sequential, ReLU, Softmax
+import torch
 
 directory= 'train_data/'
 filepath = './saved_model'
@@ -31,41 +30,41 @@ for filename in sorted(os.listdir(directory)):
     elif 'state.pickle_' in filename:
         state.append((load_object(directory + filename).tolist()))
 
-y_train = np.array(y_train)
+y_train = torch.Tensor(y_train)
 state = np.array(state)
 
 # Test Data
-test = np.array([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+test = np.array([1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 # # Load the model
 # model = load_model(filepath, compile = True)
 
-model = Sequential()
+class NNmodel(nn.Module):
 
-model.add(Dense(10, input_dim=40, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(8, activation='linear'))
-model.add(Reshape((1,4,2), input_shape=(8,)))
-model.compile(loss=CategoricalCrossentropy(from_logits=True),
-              optimizer=adam_v2.Adam(learning_rate=0.01))
+    def __init__(self):
+        super().__init__()
 
-history = model.fit(state,y_train, verbose=2,epochs=110)
-print(history.history.keys())
+        self.model = Sequential(
+                Linear(40, 10),
+                ReLU(),
+                Linear(10, 10),
+                ReLU(),
+                Linear(10, 10),
+                ReLU(),
+                Linear(10, 8),
+                Softmax()
+        )
 
-layer = Softmax()
-prediction = np.round(layer(model.predict(test)).numpy())
+    def forward(self, x):
+        return self.model(x)
+
+
+model = NNmodel()
+
+test = torch.from_numpy(test).to(dtype=torch.float32)
+prediction = model(test).round()
 print(prediction)
 
 # # Save to model after it is trained
-save_model(model, filepath)
-
-plt.plot(history.history['loss'])
-plt.title('model loss on 400 simulations')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.show()
-
-
-
+torch.save(model, filepath)
