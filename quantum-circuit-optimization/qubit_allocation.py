@@ -1,6 +1,19 @@
 import networkx as nx
 from circuit import Circuit
 
+def swaps_moving_connectivity(topology):
+    connectivity_set = []
+
+    for i, obj in enumerate(topology):
+        if i == 0:
+            connectivity_set.append((obj, topology[i + 1]))
+        elif i == (len(topology) - 1):
+            connectivity_set.append((obj, topology[i - 1]))
+        else:
+            connectivity_set.append((obj, topology[i - 1]))
+            connectivity_set.append((obj, topology[i + 1]))
+    return connectivity_set
+
 class Allocation:
 
     def __init__(self, circuit_class):
@@ -97,20 +110,6 @@ class Allocation:
                 connectivity_set.append((obj, topology[i + 1]))
         # print(connectivity_set)
         return connectivity_set  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
-
-
-def swaps_moving_connectivity(topology):
-    connectivity_set = []
-
-    for i, obj in enumerate(topology):
-        if i == 0:
-            connectivity_set.append((obj, topology[i + 1]))
-        elif i == (len(topology) - 1):
-            connectivity_set.append((obj, topology[i - 1]))
-        else:
-            connectivity_set.append((obj, topology[i - 1]))
-            connectivity_set.append((obj, topology[i + 1]))
-    return connectivity_set
 
 
 c = Circuit(4)
