@@ -124,8 +124,15 @@ class Allocation:
     def connectivity(self, hardware):
 
         # TODO: rewrite this in something like hardware_topology = {0: [1], 1: [0, 2], 2: [1, 3], 3: [2]}
-        # if not self.topology:
-        #     self.qubit_allocation()
+        # Connectivity of the physical qubit in hardware
+        # keys are indices of the physical qubits
+        # values is a list of neighboring physical qubits that each q is connected to
+        
+        # Example: {0: [1], 1: [0, 2], 2: [1, 3], 3: [2]}
+        # Physical q0 connected to physical q1
+        # Physical q1 connected to physical q0 & q2
+        # Physical q2 connected to physical q1 & q3
+        # Physical q3 connected to physical q2
 
         if hardware == "linear":
             connectivity_set = []
@@ -138,6 +145,7 @@ class Allocation:
                 else:
                     connectivity_set.append((obj, self.topology[i - 1]))
                     connectivity_set.append((obj, self.topology[i + 1]))
+                    # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
         elif hardware == "ibm-tokyo":
             connectivity_set = [(1, 7), (2, 6), (3, 9), (4, 8), (5, 11), (6, 10), (7, 13), (8, 12), (11, 17), (12, 16),
                                 (13, 19), (14, 18)]
@@ -149,7 +157,7 @@ class Allocation:
         elif hardware == "grid":
             # TODO: grid adjacency matrix
             return 0
-        return connectivity_set  # [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)]
+        return 
 
 c = Circuit(4)
 a = Allocation(c)
