@@ -72,7 +72,6 @@ class Allocation:
 
         Args:
             connectivity_set (list): List of tuples representing the desired qubit connectivity.
-            hardware_topology (dict): Hardware topology represented as an adjacency list.
 
         Returns:
             dict: A valid qubit mapping as a dictionary with connectivity set indices as keys and
@@ -83,6 +82,7 @@ class Allocation:
         connectivity_graph = {}
 
         # hardware_topology = self.connectivity(hardware='linear')
+        # hardware_topology (dict): Hardware topology represented as an adjacency list.
         hardware_topology = {0: [1], 1: [0, 2], 2: [1, 3], 3: [2]}
         for edge in connectivity_set:
             if edge[0] not in connectivity_graph:
