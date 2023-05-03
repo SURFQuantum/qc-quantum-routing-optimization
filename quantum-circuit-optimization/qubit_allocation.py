@@ -66,6 +66,17 @@ class Allocation:
         # No path exists between start and target
         return -1
 
+    def get_out_degrees(self, graph):
+        """
+        Calculates out-degrees for each node in the graph represented as a dictionary.
+        Returns a dictionary mapping nodes to their out-degrees, sorted in descending order.
+        """
+        out_degrees = {}
+        for node, connections in graph.items():
+            out_degrees[node] = len(connections)
+        out_degrees = {k: v for k, v in sorted(out_degrees.items(), key=lambda item: item[1], reverse=True)}
+        return out_degrees
+
     def find_qubit_mapping(self, connectivity_set):
         """
         Find a valid qubit mapping given a connectivity set and hardware topology.
@@ -92,32 +103,58 @@ class Allocation:
             connectivity_graph[edge[0]].add(edge[1])
             connectivity_graph[edge[1]].add(edge[0])
 
+            print(f'connectivity graph {connectivity_graph}')
+
         # Create an adjacency list from hardware topology
         hardware_graph = {}
         for node in hardware_topology:
             hardware_graph[node] = set(hardware_topology[node])
 
+            print(f'hardware graph {hardware_graph}')
+
         # Initialize qubit mapping and visited set
         qubit_mapping = {}
         visited = set()
 
+        outdegree_con = self.get_out_degrees(connectivity_graph)
+        outdegree_hard = self.get_out_degrees(hardware_graph)
+
+        print(f'outdegree_con {outdegree_con}')
+        print(f'outdegree_hard {outdegree_hard}')
+
+        for qubit, connections in connectivity_set:
+            matching_qubit = None
+            outdegree_conn_qubit = outdegree_con[qubit]
+            for matching_qubit2 in hardware_topology:
+                if matching_qubit2 not in qubit_mapping.values() and (
+                        matching_qubit is None or outdegree_hard[matching_qubit2] >= outdegree_hard[
+                    matching_qubit]) and outdegree_hard[matching_qubit2] >= outdegree_conn_qubit:
+                    if matching_qubit2 in connectivity_set and (
+                            matching_qubit is None or matching_qubit2 == qubit_mapping[qubit]):
+                        matching_qubit = matching_qubit2
+                    elif matching_qubit2 not in connectivity_set:
+                        matching_qubit = matching_qubit2
+            if matching_qubit is not None:
+                qubit_mapping[qubit] = matching_qubit
+
         # Find valid mapping for each edge in connectivity set
-        for edge in connectivity_set:
-            start, target = edge
-            if start not in visited:
-                distance = self.bfs_shortest_path_length(hardware_graph, start, target)
-                if distance == -1:
-                    return None
-                # Find the qubit in the hardware topology with the shortest distance to the target
-                qubit_candidates = []
-                for qubit in hardware_topology:
-                    if self.bfs_shortest_path_length(connectivity_graph, start, qubit) == distance:
-                        qubit_candidates.append(qubit)
-                if not qubit_candidates:
-                    return None
-                # Choose the qubit with the lowest index as the mapping
-                qubit_mapping[start] = min(qubit_candidates)
-                visited.add(start)
+        # for edge in connectivity_set:
+        #     start, target = edge
+        #     if start not in visited:
+        #
+        #         outdegree = self.get_out_degrees(hardware_graph)
+        #         if outdegree == -1:
+        #             return None
+        #         # Find the qubit in the hardware topology with the shortest distance to the target
+        #         qubit_candidates = []
+        #         for qubit in hardware_topology:
+        #             if self.get_out_degrees(connectivity_graph) == outdegree:
+        #                 qubit_candidates.append(qubit)
+        #         if not qubit_candidates:
+        #             return None
+        #         # Choose the qubit with the lowest index as the mapping
+        #         qubit_mapping[start] = min(qubit_candidates)
+        #         visited.add(start)
 
         return qubit_mapping
 
@@ -127,7 +164,7 @@ class Allocation:
         # Connectivity of the physical qubit in hardware
         # keys are indices of the physical qubits
         # values is a list of neighboring physical qubits that each q is connected to
-        
+
         # Example: {0: [1], 1: [0, 2], 2: [1, 3], 3: [2]}
         # Physical q0 connected to physical q1
         # Physical q1 connected to physical q0 & q2
@@ -157,7 +194,8 @@ class Allocation:
         elif hardware == "grid":
             # TODO: grid adjacency matrix
             return 0
-        return 
+        return
+
 
 c = Circuit(4)
 a = Allocation(c)
