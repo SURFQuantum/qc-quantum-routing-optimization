@@ -24,12 +24,10 @@ class TimeState():
     """
 
     def __init__(self, gates: List[Tuple[int,int]], 
-                 time_step: int,
                  num_qubits: int=4,
                  gate_type: str="CNOT"):
         
         self.gates = gates
-        self.time_step = time_step
         self.gate_type = gate_type
         
         self.num_qubits = num_qubits
@@ -57,7 +55,6 @@ class TimeState():
         return ops
     
     def __str__(self):
-        print("\nCircuit:\n")
         circuit_state = Circuit([Moment(*self.cirq_timestep)])
         return str(circuit_state)
 
@@ -173,8 +170,7 @@ class CircuitState():
         return len(self.circuit)
 
     def update_curcuit(self, circuit: List, gate: str) -> Tuple[Circuit, TopologyState]:
-        self.circuit = [TimeState(timestep, i, self.num_qubits, gate) 
-                for i, timestep in enumerate(circuit)]
+        self.circuit = [TimeState(timestep, self.num_qubits, gate) for timestep in circuit]
         
         cirq_circuit = self.circuit_to_cirq(self.circuit)
 
@@ -198,7 +194,7 @@ class CircuitState():
     
     def insert_circuit(self, index: int, qubits: Tuple[int, int], gate: str) -> None:
 
-        timestate = TimeState(qubits, index, self.num_qubits, gate)
+        timestate = TimeState(qubits, self.num_qubits, gate)
         self.circuit.insert(index, timestate)
         self.cirq_circuit.insert(index, Moment(*timestate.cirq_timestep))
     
@@ -216,10 +212,11 @@ class CircuitState():
             None
 
         """
-        timesteps = [TimeState(timestep, i, self.num_qubits, gate) 
-                for i, timestep in enumerate(timesteps)]
+        timesteps = [TimeState(timestep, self.num_qubits, gate) for timestep in timesteps]
+        
         
         for timestep in timesteps:
+            self.circuit.append(timestep)
             self.cirq_circuit.append(timestep.cirq_timestep, strategy=cirq.InsertStrategy.EARLIEST)
     
     def update_circuit_topology(self, new_connectivity: TopologyState) -> None:
@@ -259,19 +256,19 @@ def main():
     print(circuit)
     circuit.get_circuit_connectivity().draw()
 
-    circuit.add_to_cirq([[(0,2)], [(0,1)], [(1,3)], [(3,2)]])
+    circuit.add_to_cirq([[(0,2)], [(0,1)], [(1,3)], [(3,2)]], "CNOT")
     print(circuit)
     circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(0,1)]])
+    circuit.add_to_cirq([[(0,1)]], "CNOT")
     print(circuit)
     circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(2,3)]])
+    circuit.add_to_cirq([[(2,3)]], "CNOT")
     print(circuit)
     circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(0,3)]])
+    circuit.add_to_cirq([[(0,3)]], "CNOT")
     print(circuit)
     circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(1,2)]])
+    circuit.add_to_cirq([[(1,2)]], "SWAP")
     print(circuit)
     circuit.get_circuit_connectivity().draw()
     

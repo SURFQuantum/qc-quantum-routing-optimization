@@ -4,22 +4,44 @@ import copy
 
 from typing import List, Tuple
 
-from state import CircuitState, TopologyState
+from state import CircuitState, TopologyState, TimeState
 from collections import namedtuple, deque
 
-# Named tuple for storing experience steps gathered in training
+# For storing experience steps gathered during training
 
-State = namedtuple(
-    "State",
-    field_names=["state", "circuit_topology"])
+class State:
+    def __init__(self,
+                state: TimeState = None,
+                circuit_topology: TopologyState = None,
+                time_step: int= None):
+    
+        self.state = state
+        self.circuit_topology = circuit_topology
+        self.time_step = time_step
 
-# FROM: https://lightning.ai/docs/pytorch/stable/notebooks/lightning_examples/reinforce-learning-DQN.html
-Experience = namedtuple(
-    "Experience",
-    field_names=["state", "action", "reward", "done", "new_state"])
+    def __str__(self):
+        state_representation = str(self.state)
+        topology = str(self.circuit_topology.adjacency_topology)
+        return f"State: \n {state_representation}\n\n topology:\n {topology}\n\n time step: {self.time_step}"
+
+
+class Experience:
+    def __init__(self, 
+                    state: State = None, 
+                    action: Tuple[int, int] = None, 
+                    reward: float = None, 
+                    done: bool = None,
+                    next_state: State=None):
+        
+            self.state = state
+            self.action = action
+            self.reward = reward
+            self.done = done
+            self.next_state = next_state
 
 class ReplayBuffer:
     """Replay Buffer for storing past experiences allowing the agent to learn from them.
+       FROM: https://lightning.ai/docs/pytorch/stable/notebooks/lightning_examples/reinforce-learning-DQN.html
 
     Args:
         capacity: size of the buffer
@@ -51,27 +73,6 @@ class ReplayBuffer:
             np.array(next_states),
         )
 
-# class State:
-#     def __init__(self,
-#                  state: TimeState = None,
-#                  circuit_topology: TopologyState = None):
-        
-#         self.state = state
-#         self.circuit_topology = circuit_topology
-
-
-# class Experience:
-#    def __init__(self, 
-#                 state: State = None, 
-#                 action: Tuple[int, int] = None, 
-#                 reward: float = None, 
-#                 next_state: State=None):
-        
-#         self.state = state
-#         self.action = action
-#         self.reward = reward
-#         self.next_state = next_state
-
 class Environment:
 
     def __init__(self, 
@@ -97,24 +98,31 @@ class Environment:
         self.idx_to_action = {idx: action for action, idx in self.action_to_idx.items()}
 
         tuples = list(map(tuple, self.allowed_swaps))
-        print("tuples: ", tuples)
 
         # the allowed swaps but indexed
-        print("action to index: ", self.action_to_idx)
-        swap_indices = np.array([self.action_to_idx[tuple] for tuple in tuples])
+        # get the swap indices, a swap (qubit 1, qubit 2) == (qubit 2, qubit 1)
+        swap_indices = []
+
+        for (q1,q2) in tuples:
+            if (q1, q2) in self.action_to_idx:
+                swap_indices.append(self.action_to_idx[(q1,q2)])
+            elif (q2, q1) in self.action_to_idx:
+                swap_indices.append(self.action_to_idx[(q2, q1)])
         
         self.swap_array = np.zeros(len(self.actions))[swap_indices] = 1
         
 
     def get_allowed_swaps(self) -> np.ndarray:
-        print("adjacency: ", self.topology.adjacency_topology)
+        """
+        These are the swaps that we can do according to the target topology.
+        """
+
         qubits_to_swap = np.where(self.topology.adjacency_topology==1)
         qubits_to_swap = np.stack(qubits_to_swap).T
         return qubits_to_swap
 
     def action_space(self) -> Tuple[List, dict]:
         num_swaps_possible = np.math.factorial(self.num_qubits) / (2*np.math.factorial(self.num_qubits-2))
-        print("num swaps possible: ", num_swaps_possible)
         num_swaps_possible = int(num_swaps_possible)
         actions = []
         for i in range(num_swaps_possible):
@@ -182,9 +190,17 @@ class Environment:
         # We are converting from a networkx graph to numpy and then back to nx
         # TODO: find a way to make this more efficient?
         circuit_topology = self.circuit.topology.adjacency_topology
-        circuit_topology[swap_qubits] = circuit_topology[swap_qubits[1], swap_qubits[0]]
+        q1, q2 = swap_qubits
 
-        # update the topology
+        old_topology = circuit_topology.copy()
+        
+        # swap rows
+        circuit_topology[q1, :], circuit_topology[q2, :] = old_topology[q2, :], old_topology[q1, :]
+        old_topology = circuit_topology.copy()
+
+        # swap columns
+        circuit_topology[:, q1], circuit_topology[:, q2] = old_topology[:, q2], old_topology[:, q1]
+
         return circuit_topology
     
     def update_circuit(self, swap_qubits: Tuple[int, int]) -> None:
@@ -195,7 +211,7 @@ class Environment:
         self.circuit.topology.update(new_circuit_topology)
 
         # if we are still handling the original circuit timesteps
-        if self.current_time_step < self.original_circuit_depth:
+        if self.current_time_step < self.original_circuit_depth-1:
             self.circuit.insert_circuit(self.current_time_step+1, [swap_qubits], "SWAP")
 
         else:
@@ -207,7 +223,8 @@ class Environment:
         """
         
         current_state = State(self.circuit.circuit[self.current_time_step], 
-                                            self.circuit.topology)
+                                            self.circuit.topology,
+                                            self.current_time_step)
         # get the maximum action
 
         # update the topology by performing the swap 
@@ -218,32 +235,36 @@ class Environment:
         self.current_time_step += 1
 
         # We have updated the current time step and topology already so we are
-        # effectively in the next state
-        next_state = copy.deepcopy(self.circuit).circuit[self.current_time_step]
-        next_state = State(next_state, self.circuit.topology)
+        # effectively in the next state        
+        next_state = State(copy.deepcopy(self.circuit).circuit[self.current_time_step], 
+                           self.circuit.topology, 
+                           self.current_time_step)
 
         reward = self.get_reward()
         done = self.is_terminated()
 
-        # s, a, r, s'
-        return current_state, action, done, reward, next_state
+        # s, a, r, d, s'
+        return Experience(current_state, action, reward, done, next_state)
 
 def main():
     circuit = [[(0,1), (2,3)], [(0,2)]]
     
-    target_topology = TopologyState([[0,1],[1,2],[2,3]])
+    target_topology = TopologyState([(0,1),(1,2),(2,3)])
     circuit = CircuitState(circuit)
-    print("before step:",circuit)
+
+    print("Circuit before update step:",circuit)
     env = Environment(circuit, target_topology, "floyd-warshall")
     env.circuit.topology.draw()
-    current_state, action, reward, done, next_state = env.step((2,3))
-    print("after step:",circuit)
-    print("current state:",current_state.state)
-    print("action:",action)
-    print("reward:",reward)
-    print("done",done)
-    print("next state:",next_state.state)
+    print("Circuit adjacency topology BEFORE swap\n", env.circuit.topology.adjacency_topology)
+    experience = env.step((3,2))
+    print("Circuit adjacency topology AFTER swap\n", env.circuit.topology.adjacency_topology)
 
+    env.circuit.topology.draw()
+    print("after first step:",circuit)
+    experience = env.step((0,1))
+    print("after second step:",circuit)
+    experience = env.step((2,3))
+    print("after the third step:",circuit)
     env.circuit.topology.draw()
 
 if __name__=="__main__":
