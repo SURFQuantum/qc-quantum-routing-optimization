@@ -11,8 +11,13 @@ def convert_list_to_adjacency(qubit_gates: List[Tuple[int, int]], num_qubits: in
 
     return state_adjacency
 
-def show_graph(graph: nx.Graph) -> None:
-    nx.draw(graph)
+def show_graph(graph: nx.Graph, num_qubits: int) -> None:
+    pos = nx.spring_layout(graph, seed=0)  # positions for all nodes
+    nx.draw_networkx_nodes(graph, nodelist=graph.nodes, pos=pos, node_color="tab:red")
+    labels = nx.draw_networkx_labels(graph, pos=pos)    
+    nx.draw_networkx_nodes(graph, nodelist=graph.nodes, pos=pos, node_color="green", label=labels)
+    nx.draw_networkx_edges(graph, pos=pos, edge_color="blue")
+
     plt.draw()
     plt.show()
 
