@@ -8,6 +8,7 @@ def convert_list_to_adjacency(qubit_gates: List[Tuple[int, int]], num_qubits: in
     state_adjacency = np.zeros((num_qubits, num_qubits))
     qubit_gates = np.array(qubit_gates)
     state_adjacency[qubit_gates[:,0], qubit_gates[:,1]] = 1
+    state_adjacency[qubit_gates[:,1], qubit_gates[:,0]] = 1
 
     return state_adjacency
 
