@@ -7,8 +7,6 @@ from typing import List, Tuple
 from state import CircuitState, TopologyState, TimeState
 from collections import namedtuple, deque
 
-# For storing experience steps gathered during training
-
 class State:
     def __init__(self,
                 state: TimeState = None,
@@ -39,6 +37,12 @@ class Experience:
             self.done = done
             self.next_state = next_state
 
+# Named tuple for storing experience steps gathered during training
+Experience = namedtuple(
+    "Experience",
+    field_names=["state", "action", "reward", "done", "new_state"],
+)
+
 class ReplayBuffer:
     """Replay Buffer for storing past experiences allowing the agent to learn from them.
        FROM: https://lightning.ai/docs/pytorch/stable/notebooks/lightning_examples/reinforce-learning-DQN.html
@@ -64,6 +68,7 @@ class ReplayBuffer:
     def sample(self, batch_size: int) -> Tuple:
         indices = np.random.choice(len(self.buffer), batch_size, replace=False)
         states, actions, rewards, dones, next_states = zip(*(self.buffer[idx] for idx in indices))
+        states
 
         return (
             np.array(states),
@@ -87,7 +92,12 @@ class Environment:
         self.topology = target_topology
         self.num_qubits = self.topology.num_qubits
         self.distance_metric = distance_metric
-        self.allowed_swaps = self.get_allowed_swaps()
+        self.allowed_swaps = self.get_swaps(self.topology)
+        
+        # input representation special tokens
+        self.S = self.num_qubits
+        self.T = self.num_qubits+1
+        self.P = self.num_qubits+2
 
         # actions is a list of tuples
         # action_to_idx: (int, int) -> int
@@ -112,12 +122,16 @@ class Environment:
         self.swap_array = np.zeros(len(self.actions))[swap_indices] = 1
         
 
-    def get_allowed_swaps(self) -> np.ndarray:
+    def get_swaps(self, topology: TopologyState, unique_swaps: bool=False) -> np.ndarray:
         """
         These are the swaps that we can do according to the target topology.
         """
+        topology = topology.adjacency_topology
+        if unique_swaps:
+            # unique swaps means half of the adjacencies are irrelevant
+            topology = np.tril(topology)
 
-        qubits_to_swap = np.where(self.topology.adjacency_topology==1)
+        qubits_to_swap = np.where(topology==1)
         qubits_to_swap = np.stack(qubits_to_swap).T
         return qubits_to_swap
 
@@ -155,9 +169,6 @@ class Environment:
         reward = 1 / np.log(distance+1.5)
 
         return reward
-    
-    def get_DQN_input(self):
-        raise NotImplementedError
     
     def is_terminated(self) -> bool:
 
@@ -217,7 +228,7 @@ class Environment:
         else:
             self.circuit.add_to_cirq([[swap_qubits]], "SWAP")
     
-    def step(self, action: Tuple[int, int]) -> Tuple:
+    def step(self, action: Tuple[int, int]) -> Experience:
         """
         action is a swap
         """
@@ -225,11 +236,16 @@ class Environment:
         current_state = State(self.circuit.circuit[self.current_time_step], 
                                             self.circuit.topology,
                                             self.current_time_step)
+        
+        current_state = self.get_DQN_input(current_state)
         # get the maximum action
 
         # update the topology by performing the swap 
         # and update the circuit by adding the timestep with the swap
         self.update_circuit(action)
+        
+        # action is an integer, both ways is valid e.g., (1,2)==(2,1)
+        action = self.action_to_idx[action] if action in self.action_to_idx else self.action_to_idx[(action[1], action[0])]
         
         # update time step
         self.current_time_step += 1
@@ -239,14 +255,78 @@ class Environment:
         next_state = State(copy.deepcopy(self.circuit).circuit[self.current_time_step], 
                            self.circuit.topology, 
                            self.current_time_step)
+        
+        next_state = self.get_DQN_input(next_state)
 
         reward = self.get_reward()
         done = self.is_terminated()
 
         # s, a, r, d, s'
         return Experience(current_state, action, reward, done, next_state)
+    
+    def get_DQN_input(self, state: State):
+
+        """
+        TODO: check the validty of below statement.
+
+        The input to the transformer is a sequence of current arity-2 gates in a specific timestep
+        together with the current topology of the circuit. 
+
+        The input is a fixed sequence-length vector of tokens, each corresponding to a qubit. 
+
+        For example: 
+
+        1. max sequence length is 16
+        2. we have 4 qubits: [0,1,2,3]
+        3. we are at timestep 3, where we have 1 CNOT between (0,1) and (2,3).
+        4. Our current circuit topology is: (0,1),(1,2),(2,3)
+
+        The current input vector would look like:
+        x = [S, 0, 1, 2, 3, T, 0, 1, 1, 2, 2, 3, P, P, P, P], 
+        
+                where   S indicates the start of state 
+                        T indicates the start of the Topology
+                        P indicates padding
+        
+        Note that we can have a maximum of Q // 2 arity-2 gates in one timestep, and a maximum
+        of (Q^2-Q) circuit topology pairs (in the extreme case that all qubits are connected to all others)
+
+        Meaning that our vector should preferably be of length |x| = 2 + (Q // 2)*2 + (Q^2)*2
+        So for a 32-qubit circuit we would have an input length of |x| = 2 + 32 + 2048 = 2082
+
+        Here we already see that the topology sequence is dominant. Especially if it should be padded to the fullest.
+        Hence, we probably need to make some educated choices.
+
+        Can we just slash (Q^2)*2 by 4? So Q^2 / 2, how big are topologies usually?
+        """
+
+        gates = np.array(state.state.gates).flatten()
+        topology = self.get_swaps(state.circuit_topology, unique_swaps=True).flatten()
+        
+        gates_length = gates.shape[0]
+        topology_length = topology.shape[0]
+
+        x = np.zeros((2+self.num_qubits+(self.num_qubits**2)*2,))
+        x[0] = self.S
+        #print(x)
+        x[self.num_qubits+1] = self.T
+        #print(x)
+        x[1:1+gates_length] = gates
+        #print(x)
+        x[1+gates_length:self.num_qubits+1] = self.P
+        #print(x)
+        x[self.num_qubits+2:self.num_qubits+2+topology_length] = topology
+        #print(x)
+        x[self.num_qubits+2+topology_length:] = self.P
+        #print(x)
+
+        return x
 
 def main():
+
+    """
+    TESTING
+    """
     circuit = [[(0,1), (2,3)], [(0,2)]]
     
     target_topology = TopologyState([(0,1),(1,2),(2,3)])
@@ -257,15 +337,16 @@ def main():
     env.circuit.topology.draw()
     print("Circuit adjacency topology BEFORE swap\n", env.circuit.topology.adjacency_topology)
     experience = env.step((3,2))
+    print("state vector: ", experience.state)
+
     print("Circuit adjacency topology AFTER swap\n", env.circuit.topology.adjacency_topology)
 
     env.circuit.topology.draw()
     print("after first step:",circuit)
     experience = env.step((0,1))
+    print(experience.state)
+
     print("after second step:",circuit)
-    experience = env.step((2,3))
-    print("after the third step:",circuit)
-    env.circuit.topology.draw()
 
 if __name__=="__main__":
     main()
