@@ -106,17 +106,6 @@ class Environment:
         self.swap_array = np.zeros(len(self.actions))[swap_indices] = 1
         
 
-    def perform_swap(self, swap_qubits: Tuple[int, int]) -> np.ndarray:
-
-        # We are converting from a networkx graph to numpy and then back to nx
-        # TODO: find a way to make this more efficient?
-        circuit_topology = self.circuit.topology.adjacency_topology
-        circuit_topology[swap_qubits] = circuit_topology[swap_qubits[1], swap_qubits[0]]
-
-        # update the topology
-        return circuit_topology
-        
-
     def get_allowed_swaps(self) -> np.ndarray:
         print("adjacency: ", self.topology.adjacency_topology)
         qubits_to_swap = np.where(self.topology.adjacency_topology==1)
@@ -188,6 +177,16 @@ class Environment:
     def is_truncated(self) -> bool:
         return self.circuit.length() > self.max_time
     
+    def perform_swap(self, swap_qubits: Tuple[int, int]) -> np.ndarray:
+
+        # We are converting from a networkx graph to numpy and then back to nx
+        # TODO: find a way to make this more efficient?
+        circuit_topology = self.circuit.topology.adjacency_topology
+        circuit_topology[swap_qubits] = circuit_topology[swap_qubits[1], swap_qubits[0]]
+
+        # update the topology
+        return circuit_topology
+    
     def update_circuit(self, swap_qubits: Tuple[int, int]) -> None:
         # perform the swap by swapping in the adjacency matrix
         new_circuit_topology = self.perform_swap(swap_qubits)
@@ -197,10 +196,10 @@ class Environment:
 
         # if we are still handling the original circuit timesteps
         if self.current_time_step < self.original_circuit_depth:
-            self.circuit.insert_circuit(self.current_time_step+1, [swap_qubits])
+            self.circuit.insert_circuit(self.current_time_step+1, [swap_qubits], "SWAP")
 
         else:
-            self.circuit.add_to_cirq([[swap_qubits]])
+            self.circuit.add_to_cirq([[swap_qubits]], "SWAP")
     
     def step(self, action: Tuple[int, int]) -> Tuple:
         """
@@ -213,7 +212,7 @@ class Environment:
 
         # update the topology by performing the swap 
         # and update the circuit by adding the timestep with the swap
-        self.update_curcuit(action)
+        self.update_circuit(action)
         
         # update time step
         self.current_time_step += 1
@@ -223,19 +222,29 @@ class Environment:
         next_state = copy.deepcopy(self.circuit).circuit[self.current_time_step]
         next_state = State(next_state, self.circuit.topology)
 
-        reward = self.get_reward() 
+        reward = self.get_reward()
+        done = self.is_terminated()
 
         # s, a, r, s'
-        return current_state, action, reward, next_state
+        return current_state, action, done, reward, next_state
 
 def main():
     circuit = [[(0,1), (2,3)], [(0,2)]]
     
     target_topology = TopologyState([[0,1],[1,2],[2,3]])
     circuit = CircuitState(circuit)
+    print("before step:",circuit)
     env = Environment(circuit, target_topology, "floyd-warshall")
+    env.circuit.topology.draw()
+    current_state, action, reward, done, next_state = env.step((2,3))
+    print("after step:",circuit)
+    print("current state:",current_state.state)
+    print("action:",action)
+    print("reward:",reward)
+    print("done",done)
+    print("next state:",next_state.state)
 
-    #env.step()
+    env.circuit.topology.draw()
 
 if __name__=="__main__":
     main()

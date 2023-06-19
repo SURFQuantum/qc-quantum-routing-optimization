@@ -2,7 +2,7 @@ import os
 import numpy as np
 import random
 import cirq
-from cirq import Circuit, NamedQubit, CNOT, LineQubit, Moment
+from cirq import Circuit, NamedQubit, CNOT, SWAP, LineQubit, Moment
 from cirq.contrib.routing import get_circuit_connectivity
 from utils import convert_list_to_adjacency, show_graph
 from typing import List, Tuple, Union
@@ -25,10 +25,12 @@ class TimeState():
 
     def __init__(self, gates: List[Tuple[int,int]], 
                  time_step: int,
-                 num_qubits: int=4):
+                 num_qubits: int=4,
+                 gate_type: str="CNOT"):
         
         self.gates = gates
         self.time_step = time_step
+        self.gate_type = gate_type
         
         self.num_qubits = num_qubits
         self.adjacency_gates = convert_list_to_adjacency(self.gates, self.num_qubits)
@@ -45,10 +47,19 @@ class TimeState():
 
         q = LineQubit.range(self.num_qubits)
 
-        # assume we are only dealing with CNOTs
-        ops = [CNOT(q[gate[0]], q[gate[1]]) for gate in self.gates]
+        # assume we are only dealing with CNOTs at the start
+        if self.gate_type=="CNOT":
+            ops = [CNOT(q[gate[0]], q[gate[1]]) for gate in self.gates]
+
+        elif self.gate_type=="SWAP":
+            ops = [SWAP(q[gate[0]], q[gate[1]]) for gate in self.gates]
         
         return ops
+    
+    def __str__(self):
+        print("\nCircuit:\n")
+        circuit_state = Circuit([Moment(*self.cirq_timestep)])
+        return str(circuit_state)
 
 class TopologyState():
     """
@@ -131,7 +142,8 @@ class TopologyState():
         return np.sum(absolute_distance)
         
     def draw(self):
-        show_graph(self.nx_topology)
+        
+        show_graph(self.nx_topology, self.num_qubits)
 
 class CircuitState():
     """
@@ -153,43 +165,44 @@ class CircuitState():
         
         self.circuit = circuit
         self.num_qubits = num_qubits
-        self.cirq_circuit = self.update_curcuit(self.circuit)
-        self.topology = self.get_circuit_connectivity(self.cirq_circuit)
+        self.cirq_circuit = self.update_curcuit(self.circuit,"CNOT")
+        self.topology = self.get_circuit_connectivity()
         self.time_step = 0
 
     def length(self) -> int:
         return len(self.circuit)
 
-    def update_curcuit(self, circuit: List) -> Tuple[Circuit, TopologyState]:
-        self.circuit = [TimeState(timestep, i, self.num_qubits) 
+    def update_curcuit(self, circuit: List, gate: str) -> Tuple[Circuit, TopologyState]:
+        self.circuit = [TimeState(timestep, i, self.num_qubits, gate) 
                 for i, timestep in enumerate(circuit)]
         
         cirq_circuit = self.circuit_to_cirq(self.circuit)
 
         return cirq_circuit
-
-    def insert_circuit(self, index: int, gate: Tuple[int, int]):
-        timestate = TimeState(gate, index, self.num_qubits)
-        self.circuit.insert(index, timestate)
-        self.cirq_circuit.insert(index, Moment(timestate.cirq_operations))
-
-    def circuit_to_cirq(self, circuit:List[TimeState]) -> Circuit:
-        """
-        Convert the quantum circuit to Cirq circuit representation.
-
-        Args:
-            circuit (List[TimeState]): List of TimeState objects representing the circuit at different time steps.
-
-        Returns:
-            Circuit: cirq representation of the quantum circuit.
-
-        """
-
-        circuit = [Moment(*timestep.cirq_timestep) for timestep in circuit]
-        circuit = Circuit(circuit)
-        return circuit
     
-    def add_to_cirq(self, timesteps: List) -> None:
+    def circuit_to_cirq(self, circuit:List[TimeState]) -> Circuit:
+            """
+            Convert the quantum circuit to Cirq circuit representation.
+
+            Args:
+                circuit (List[TimeState]): List of TimeState objects representing the circuit at different time steps.
+
+            Returns:
+                Circuit: cirq representation of the quantum circuit.
+
+            """
+
+            circuit = [Moment(*timestep.cirq_timestep) for timestep in circuit]
+            circuit = Circuit(circuit)
+            return circuit
+    
+    def insert_circuit(self, index: int, qubits: Tuple[int, int], gate: str) -> None:
+
+        timestate = TimeState(qubits, index, self.num_qubits, gate)
+        self.circuit.insert(index, timestate)
+        self.cirq_circuit.insert(index, Moment(*timestate.cirq_timestep))
+    
+    def add_to_cirq(self, timesteps: List, gate: str) -> None:
         """
         Add additional time steps to the Cirq circuit representation. 
         We use EARLIEST Insert Strategy for now. 
@@ -203,7 +216,7 @@ class CircuitState():
             None
 
         """
-        timesteps = [TimeState(timestep, i, self.num_qubits) 
+        timesteps = [TimeState(timestep, i, self.num_qubits, gate) 
                 for i, timestep in enumerate(timesteps)]
         
         for timestep in timesteps:
@@ -222,7 +235,7 @@ class CircuitState():
         """
         self.topology = new_connectivity
 
-    def get_circuit_connectivity(self, cirq_circuit: Circuit) -> TopologyState:
+    def get_circuit_connectivity(self) -> TopologyState:
         """
         Get the connectivity graph of the quantum circuit.
 
@@ -231,7 +244,7 @@ class CircuitState():
 
         """
 
-        circuit_graph = TopologyState(get_circuit_connectivity(cirq_circuit))
+        circuit_graph = TopologyState(get_circuit_connectivity(self.cirq_circuit))
         return circuit_graph
 
     def __str__(self):
@@ -244,23 +257,23 @@ def main():
     topology = TopologyState([[0,1],[1,2],[2,3]])
     circuit = CircuitState(circuit)
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
 
     circuit.add_to_cirq([[(0,2)], [(0,1)], [(1,3)], [(3,2)]])
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
     circuit.add_to_cirq([[(0,1)]])
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
     circuit.add_to_cirq([[(2,3)]])
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
     circuit.add_to_cirq([[(0,3)]])
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
     circuit.add_to_cirq([[(1,2)]])
     print(circuit)
-    circuit.get_circuit_connectivity(circuit.cirq_circuit).draw()
+    circuit.get_circuit_connectivity().draw()
     
     print("hamming distance: ", topology.hamming_distance_to_circuit(circuit.topology.nx_topology))
     print("Floyd warshall distance between topologies: ", topology.floyd_warshall_distance_to_circuit(circuit.topology.nx_topology))
