@@ -22,3 +22,4 @@ def show_graph(graph: nx.Graph, num_qubits: int) -> None:
     plt.draw()
     plt.show()
 
+

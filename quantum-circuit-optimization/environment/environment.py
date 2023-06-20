@@ -23,19 +23,19 @@ class State:
         return f"State: \n {state_representation}\n\n topology:\n {topology}\n\n time step: {self.time_step}"
 
 
-class Experience:
-    def __init__(self, 
-                    state: State = None, 
-                    action: Tuple[int, int] = None, 
-                    reward: float = None, 
-                    done: bool = None,
-                    next_state: State=None):
+# class Experience:
+#     def __init__(self, 
+#                     state: State = None, 
+#                     action: Tuple[int, int] = None, 
+#                     reward: float = None, 
+#                     done: bool = None,
+#                     next_state: State=None):
         
-            self.state = state
-            self.action = action
-            self.reward = reward
-            self.done = done
-            self.next_state = next_state
+#             self.state = state
+#             self.action = action
+#             self.reward = reward
+#             self.done = done
+#             self.next_state = next_state
 
 # Named tuple for storing experience steps gathered during training
 Experience = namedtuple(
@@ -83,9 +83,11 @@ class Environment:
     def __init__(self, 
                  circuit: CircuitState, 
                  target_topology: TopologyState,
-                 distance_metric: str):
+                 distance_metric: str,
+                 max_time: int=32):
 
         self.current_time_step = 0
+        self.max_time = max_time
 
         self.circuit = circuit
         self.original_circuit_depth = self.circuit.length()
@@ -102,7 +104,8 @@ class Environment:
         # actions is a list of tuples
         # action_to_idx: (int, int) -> int
         self.actions, self.action_to_idx = self.action_space()
-        print("num of actions total: ", len(self.actions))
+        #print("action space: ", self.actions)
+        #print("num of actions total: ", len(self.actions))
 
         # reverse of the above: int -> (int, int)
         self.idx_to_action = {idx: action for action, idx in self.action_to_idx.items()}
@@ -111,16 +114,19 @@ class Environment:
 
         # the allowed swaps but indexed
         # get the swap indices, a swap (qubit 1, qubit 2) == (qubit 2, qubit 1)
-        swap_indices = []
+        self.swap_indices = []
 
         for (q1,q2) in tuples:
             if (q1, q2) in self.action_to_idx:
-                swap_indices.append(self.action_to_idx[(q1,q2)])
+                self.swap_indices.append(self.action_to_idx[(q1,q2)])
             elif (q2, q1) in self.action_to_idx:
-                swap_indices.append(self.action_to_idx[(q2, q1)])
+                self.swap_indices.append(self.action_to_idx[(q2, q1)])
         
-        self.swap_array = np.zeros(len(self.actions))[swap_indices] = 1
-        
+        self.swap_array = np.zeros(len(self.actions))[self.swap_indices] = 1        
+
+    def sample_action(self) -> Tuple[int, int]:
+        idx = np.random.choice(len(self.swap_indices))
+        return idx
 
     def get_swaps(self, topology: TopologyState, unique_swaps: bool=False) -> np.ndarray:
         """
@@ -136,11 +142,11 @@ class Environment:
         return qubits_to_swap
 
     def action_space(self) -> Tuple[List, dict]:
-        num_swaps_possible = np.math.factorial(self.num_qubits) / (2*np.math.factorial(self.num_qubits-2))
-        num_swaps_possible = int(num_swaps_possible)
+        #num_swaps_possible = np.math.factorial(self.num_qubits) / (2*np.math.factorial(self.num_qubits-2))
+        #print("num swaps possible: ", num_swaps_possible)
         actions = []
-        for i in range(num_swaps_possible):
-            for j in range(i+1, num_swaps_possible):
+        for i in range(self.num_qubits):
+            for j in range(i+1, self.num_qubits):
                 actions.append((i,j))
         
         action_to_idx = {swap: i for i, swap in enumerate(actions)}
@@ -166,9 +172,9 @@ class Environment:
         # Also, keep in mind that in AlphaGo Zero we use +1 and -1 (big and small) reward
         # for finding a solution to the routing problem. 
 
-        reward = 1 / np.log(distance+1.5)
-
-        return reward
+        #reward = 1 / np.log(distance+1.5)
+        #reward = 1 / distance
+        return -distance
     
     def is_terminated(self) -> bool:
 
@@ -176,6 +182,9 @@ class Environment:
             distance = self.topology.floyd_warshall_distance_to_circuit(self.circuit.topology.nx_topology)
 
         if distance==0:
+            return True
+        
+        if self.is_truncated:
             return True
         
         return False
@@ -191,7 +200,6 @@ class Environment:
         action = np.argmax(output_state_actions * self.swap_array)
 
         return self.idx_to_action[action]
-
     
     def is_truncated(self) -> bool:
         return self.circuit.length() > self.max_time
@@ -228,11 +236,15 @@ class Environment:
         else:
             self.circuit.add_to_cirq([[swap_qubits]], "SWAP")
     
-    def step(self, action: Tuple[int, int]) -> Experience:
+    def get_first_state(self):
+        return self.get_DQN_input(State(self.circuit.circuit[0], 
+                     self.circuit.topology, 0))
+
+    def step(self, action: int) -> Tuple:
         """
         action is a swap
         """
-        
+
         current_state = State(self.circuit.circuit[self.current_time_step], 
                                             self.circuit.topology,
                                             self.current_time_step)
@@ -242,18 +254,20 @@ class Environment:
 
         # update the topology by performing the swap 
         # and update the circuit by adding the timestep with the swap
-        self.update_circuit(action)
+        self.update_circuit(self.idx_to_action[action])
         
         # action is an integer, both ways is valid e.g., (1,2)==(2,1)
-        action = self.action_to_idx[action] if action in self.action_to_idx else self.action_to_idx[(action[1], action[0])]
+        #action = self.action_to_idx[action] if action in self.action_to_idx else self.action_to_idx[(action[1], action[0])]
         
         # update time step
         self.current_time_step += 1
 
         # We have updated the current time step and topology already so we are
         # effectively in the next state        
-        next_state = State(copy.deepcopy(self.circuit).circuit[self.current_time_step], 
-                           self.circuit.topology, 
+        circuit = copy.deepcopy(self.circuit).circuit[self.current_time_step]
+        topology = copy.deepcopy(self.circuit.topology)
+        next_state = State(circuit, 
+                           topology, 
                            self.current_time_step)
         
         next_state = self.get_DQN_input(next_state)
@@ -261,8 +275,8 @@ class Environment:
         reward = self.get_reward()
         done = self.is_terminated()
 
-        # s, a, r, d, s'
-        return Experience(current_state, action, reward, done, next_state)
+        # s, r, d, s'
+        return current_state, reward, done, next_state
     
     def get_DQN_input(self, state: State):
 
@@ -336,15 +350,15 @@ def main():
     env = Environment(circuit, target_topology, "floyd-warshall")
     env.circuit.topology.draw()
     print("Circuit adjacency topology BEFORE swap\n", env.circuit.topology.adjacency_topology)
-    experience = env.step((3,2))
-    print("state vector: ", experience.state)
+    current_state, reward, done, next_state = env.step((3,2))
+    print("state vector: ", current_state)
 
     print("Circuit adjacency topology AFTER swap\n", env.circuit.topology.adjacency_topology)
 
     env.circuit.topology.draw()
     print("after first step:",circuit)
-    experience = env.step((0,1))
-    print(experience.state)
+    current_state, reward, done, next_state = env.step((0,1))
+    print(current_state)
 
     print("after second step:",circuit)
 

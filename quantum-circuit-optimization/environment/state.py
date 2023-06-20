@@ -245,13 +245,12 @@ class CircuitState():
         return circuit_graph
 
     def __str__(self):
-        print("\nCircuit:\n")
-        return str(self.cirq_circuit)
+        return "\nCircuit:\n" + str(self.cirq_circuit) + "\n"
 
 def main():
     circuit = [[(0,1), (2,3)], [(0,2)]]
     
-    topology = TopologyState([[0,1],[1,2],[2,3]])
+    topology = TopologyState([(0,1),(1,2),(2,3)])
     circuit = CircuitState(circuit)
     print(circuit)
     circuit.get_circuit_connectivity().draw()
