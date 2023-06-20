@@ -34,11 +34,11 @@ class DQN(nn.Module):
     """Simple MLP network."""
 
     def __init__(self, 
-                 block_size: int = 1024,
+                 block_size: int = 38,
                  vocab_size: int = 7,
-                 n_layer: int = 2,
-                 n_head: int = 2,
-                 n_embd: int = 32,
+                 n_layer: int = 8,
+                 n_head: int = 4,
+                 n_embd: int = 64,
                  dropout: float = 0.0,
                  bias: bool = True,
                  output_dim: int=6):
@@ -70,28 +70,27 @@ class Agent:
 
     def __init__(self,
                  env: Environment,
-                 circuit: CircuitState, 
-                 target_topology: TopologyState,
-                 distance_metric: str, 
-                 replay_buffer: ReplayBuffer) -> None:
+                 replay_buffer: ReplayBuffer = None,
+                 inference: bool = False) -> None:
         """
         Args:
             env: training environment
             replay_buffer: replay buffer storing experiences
         """
         self.env = env
+        self.inference = inference
 
-        self.circuit = copy.deepcopy(circuit)
-        self.target_topology = copy.deepcopy(target_topology)
-        self.distance_metric = distance_metric
-        self.replay_buffer = replay_buffer
+        if not self.inference:
+            self.replay_buffer = replay_buffer
+
         self.state = self.env.get_first_state()
+
+        self.swap_array = torch.tensor([self.env.swap_array])
 
     def reset(self) -> None:
         """Resents the environment and updates the state."""
-        self.env = Environment(self.circuit, 
-                                  self.target_topology,
-                                  self.distance_metric)
+        #print("resetted@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        self.env.reset()
 
     def get_action(self, model: nn.Module, epsilon: float, device: str) -> int:
         """Using the given network, decide what action to carry out using an epsilon-greedy policy.
@@ -104,7 +103,7 @@ class Agent:
         Returns:
             action
         """
-        if np.random.random() < epsilon:
+        if np.random.random() < epsilon and not self.inference:
             action = self.env.sample_action()
         else:
             state = torch.tensor(self.state).unsqueeze(0)
@@ -113,7 +112,9 @@ class Agent:
                 state = state.cuda(device)
 
             q_values = model(state)
-            swap_array = torch.tensor([self.env.swap_array]).to(device)
+            swap_array = self.swap_array#.to(device)
+            #print("swap array: ",swap_array)
+            #print("q values: ", q_values)
             _, action = torch.max(q_values*swap_array, dim=1)
             action = int(action.item())
 
@@ -138,17 +139,21 @@ class Agent:
         """
 
         action = self.get_action(model, epsilon, device)
+        #print("random action drawn: ", action)
 
         # do step in the environment
-        new_state, reward, done, _ = self.env.step(action)
+        new_state, reward, done, next_state = self.env.step(action)
+        #print(new_state)
+        #print("next state: ", next_state)
+        #print(reward)
 
         exp = Experience(self.state, action, reward, done, new_state)
 
-        self.replay_buffer.append(exp)
+        if not self.inference:
+            self.replay_buffer.append(exp)
 
         self.state = new_state
         if done:
-            #print(self.env.circuit)
             self.reset()
 
         return reward, done

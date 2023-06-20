@@ -72,7 +72,7 @@ class ReplayBuffer:
 
         return (
             np.array(states),
-            np.array(actions),
+            np.array(actions, dtype=np.float32),
             np.array(rewards, dtype=np.float32),
             np.array(dones, dtype=bool),
             np.array(next_states),
@@ -88,13 +88,23 @@ class Environment:
 
         self.current_time_step = 0
         self.max_time = max_time
+        self.original_topology = target_topology
+        self.original_circuit = circuit
 
-        self.circuit = circuit
+        #print(self.original_circuit)
+        self.topology = TopologyState(target_topology)
+        self.circuit = CircuitState(circuit)
+
         self.original_circuit_depth = self.circuit.length()
-        self.topology = target_topology
+
+
+        #print(self.circuit)
+        #raise ValueError()
+
         self.num_qubits = self.topology.num_qubits
         self.distance_metric = distance_metric
         self.allowed_swaps = self.get_swaps(self.topology)
+        #print("allowed swaps: ", self.allowed_swaps)
         
         # input representation special tokens
         self.S = self.num_qubits
@@ -121,12 +131,21 @@ class Environment:
                 self.swap_indices.append(self.action_to_idx[(q1,q2)])
             elif (q2, q1) in self.action_to_idx:
                 self.swap_indices.append(self.action_to_idx[(q2, q1)])
-        
-        self.swap_array = np.zeros(len(self.actions))[self.swap_indices] = 1        
+        #print("swap indices: ", self.swap_indices)
+        self.swap_array = np.zeros(len(self.actions))
+        self.swap_array[self.swap_indices] = 1  
+        #print("swap array: ", self.swap_array)    
+        #raise ValueError()
+  
+    def reset(self):
+        self.topology = TopologyState(self.original_topology)
+        self.circuit = CircuitState(self.original_circuit)
+        self.current_time_step = 0
+        self.original_circuit_depth = self.circuit.length()
 
-    def sample_action(self) -> Tuple[int, int]:
+    def sample_action(self) -> int:
         idx = np.random.choice(len(self.swap_indices))
-        return idx
+        return self.swap_indices[idx]
 
     def get_swaps(self, topology: TopologyState, unique_swaps: bool=False) -> np.ndarray:
         """
@@ -182,12 +201,26 @@ class Environment:
             distance = self.topology.floyd_warshall_distance_to_circuit(self.circuit.topology.nx_topology)
 
         if distance==0:
+            #print("blawwww??????")
             return True
         
-        if self.is_truncated:
+        #print("lol???????")
+        #print("max time???:",self.max_time)
+        #print("circuit length???", self.circuit.length())
+        #print("done lol???", self.circuit.length() > self.max_time)
+        #print("[=======================]")
+        if self.is_truncated():
+            #print("lol???????")
+            #print("max time???:",self.max_time)
+            #print("circuit length???", self.circuit.length())
+
+            #print("done lol???", self.circuit.length() > self.max_time)
             return True
         
         return False
+    
+    def is_truncated(self) -> bool:
+        return self.circuit.length() > self.max_time
 
     # TODO: DOESN'T BELONG IN THIS CLASS
     def get_max_action(self, output_state_actions: np.ndarray) -> Tuple[int, int]:
@@ -200,9 +233,6 @@ class Environment:
         action = np.argmax(output_state_actions * self.swap_array)
 
         return self.idx_to_action[action]
-    
-    def is_truncated(self) -> bool:
-        return self.circuit.length() > self.max_time
     
     def perform_swap(self, swap_qubits: Tuple[int, int]) -> np.ndarray:
 
@@ -264,8 +294,8 @@ class Environment:
 
         # We have updated the current time step and topology already so we are
         # effectively in the next state        
-        circuit = copy.deepcopy(self.circuit).circuit[self.current_time_step]
-        topology = copy.deepcopy(self.circuit.topology)
+        circuit = self.circuit.circuit[self.current_time_step]
+        topology = self.circuit.topology
         next_state = State(circuit, 
                            topology, 
                            self.current_time_step)

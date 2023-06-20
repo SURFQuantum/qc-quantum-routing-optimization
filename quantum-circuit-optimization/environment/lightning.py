@@ -21,16 +21,16 @@ class DQNLightning(LightningModule):
 
     def __init__(
         self,
-        batch_size: int = 64,
-        lr: float = 1e-3,
+        batch_size: int = 256,
+        lr: float = 1e-4,
         gamma: float = 0.99,
         sync_rate: int = 10,
-        replay_size: int = 1000,
+        replay_size: int = 100000,
         warm_start_size: int = 1000,
-        eps_last_frame: int = 1000,
+        eps_last_frame: int = 10000,
         eps_start: float = 1.0,
         eps_end: float = 0.01,
-        episode_length: int = 64,
+        episode_length: int = 32,
         warm_start_steps: int = 1000,
     ) -> None:
         """
@@ -58,15 +58,13 @@ class DQNLightning(LightningModule):
         #create and environment
         # TODO: simulate many environments
         circuit = [[(0,1), (2,3)], [(0,2)]]
-        target_topology = TopologyState([(0,1),(1,2),(2,3)])
-        circuit = CircuitState(circuit)
-        print(circuit)
+        target_topology = [(0,1),(1,2),(2,3)]
 
         distance_metric = "floyd-warshall"
         self.env = Environment(circuit, target_topology, distance_metric)
 
         self.buffer = ReplayBuffer(self.hparams.replay_size)
-        self.agent = Agent(self.env, circuit, target_topology, distance_metric, self.buffer)
+        self.agent = Agent(self.env, self.buffer)
         self.total_reward = 0
         self.episode_reward = 0
         self.populate(self.hparams.warm_start_steps)
@@ -104,18 +102,20 @@ class DQNLightning(LightningModule):
             loss
         """
         states, actions, rewards, dones, next_states = batch
+        actions = actions.long()
 
-        state_action_values = self.net(states).gather(1, actions.long().unsqueeze(-1)).squeeze(-1)
+        state_action_values = self.net(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
 
         with torch.no_grad():
             device = self.get_device(batch)
-            swap_array = torch.tensor(self.env.swap_array).unsqueeze(0).to(device)
+            swap_array = torch.tensor(self.env.swap_array).unsqueeze(0).to(device).float()
             next_state_values = self.target_net(next_states)
             next_state_values = torch.max(swap_array*next_state_values, dim=1)[0]
             next_state_values[dones] = 0.0
             next_state_values = next_state_values.detach()
 
         expected_state_action_values = next_state_values * self.hparams.gamma + rewards
+        #print("expected:", expected_state_action_values.dtype)
 
         return nn.MSELoss()(state_action_values, expected_state_action_values)
 
@@ -137,10 +137,12 @@ class DQNLightning(LightningModule):
         """
         device = self.get_device(batch)
         epsilon = self.get_epsilon(self.hparams.eps_start, self.hparams.eps_end, self.hparams.eps_last_frame)
+        print("epsilon value: ", epsilon)
         self.log("epsilon", epsilon)
 
         # step through environment with agent
         reward, done = self.agent.play_step(self.net, epsilon, device)
+        #print("reward: ", type(reward))
         self.episode_reward += reward
         self.log("episode reward", self.episode_reward)
 
@@ -191,7 +193,7 @@ class DQNLightning(LightningModule):
 model = DQNLightning()
 
 trainer = Trainer(  # limiting got iPython runs
-    max_epochs=100,
+    max_epochs=1000,
     val_check_interval=1,
     logger=CSVLogger(save_dir="logs/"),
 )
