@@ -32,6 +32,7 @@ def main(args):
 
     distance_metric = "floyd-warshall"
     environment = Environment(circuit, target_topology, distance_metric)
+    print(environment.circuit)
     model = load_model(args)
 
     agent = Agent(environment, distance_metric, inference=True)
@@ -41,8 +42,8 @@ def main(args):
     while not done:
             reward, done = agent.play_step(model, epsilon=1.0)
             print("Done?", done, "current reward: ", reward)
-            print(environment.circuit)
-            if count > 20:
+            print(agent.env.circuit)
+            if count > 10:
                 break
             count += 1
 
@@ -52,7 +53,7 @@ if __name__=="__main__":
     parser = ArgumentParser()
 
     # Add arguments
-    parser.add_argument('--model_path', type=str, default="./logs/lightning_logs/version_21/checkpoints/epoch=99-step=400.ckpt", help='Input model path')
+    parser.add_argument('--model_path', type=str, default="./logs/lightning_logs/version_96/checkpoints/epoch=199-step=800.ckpt", help='Input model path')
 
     # Parse the arguments
     args = parser.parse_args()

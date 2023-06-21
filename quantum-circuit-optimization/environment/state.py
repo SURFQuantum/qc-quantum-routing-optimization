@@ -162,14 +162,45 @@ class CircuitState():
         
         self.circuit = circuit
         self.num_qubits = num_qubits
-        self.cirq_circuit = self.update_curcuit(self.circuit,"CNOT")
+        self.cirq_circuit = self.update_circuit(self.circuit,"CNOT")
         self.topology = self.get_circuit_connectivity()
         self.time_step = 0
 
     def length(self) -> int:
         return len(self.circuit)
 
-    def update_curcuit(self, circuit: List, gate: str) -> Tuple[Circuit, TopologyState]:
+    def update_circuit_after_swap(self, swap: Tuple[int,int], swap_timestep: int) -> None:
+        for i in range(swap_timestep+1, self.length()):
+            moment = self.cirq_circuit[i]
+            new_gates = []
+            for gate in moment:
+                
+                first, second = int(gate.qubits[0]), int(gate.qubits[1])
+
+                if first==swap[0]:
+                    new_first = LineQubit(swap[1])
+                elif first==swap[1]:
+                    new_first = LineQubit(swap[0])
+                else:
+                    new_first = LineQubit(first)
+
+                if second==swap[0]:
+                    new_second = LineQubit(swap[1])
+                elif second==swap[1]:
+                    new_second = LineQubit(swap[0])
+                else:
+                    new_second = LineQubit(second)
+
+                # we might want to add a SWAP one as well if we are 
+                # going to ever update a SWAP instead
+                if str(gate)[:4]=="CNOT":
+                    new_gates.append(CNOT(new_first, new_second))
+                else:
+                    new_gates.append(SWAP(new_first, new_second))
+                
+            self.cirq_circuit[i] = Moment(*new_gates)
+
+    def update_circuit(self, circuit: List, gate: str) -> Tuple[Circuit, TopologyState]:
         self.circuit = [TimeState(timestep, self.num_qubits, gate) for timestep in circuit]
         
         cirq_circuit = self.circuit_to_cirq(self.circuit)
@@ -192,11 +223,11 @@ class CircuitState():
             circuit = Circuit(circuit)
             return circuit
     
-    def insert_circuit(self, index: int, qubits: Tuple[int, int], gate: str) -> None:
+    def insert_circuit(self, index: int, qubits: List[Tuple[int, int]], gate: str) -> None:
 
         timestate = TimeState(qubits, self.num_qubits, gate)
         self.circuit.insert(index, timestate)
-        self.cirq_circuit.insert(index, Moment(*timestate.cirq_timestep))
+        self.cirq_circuit.insert(index, Moment(*timestate.cirq_timestep), strategy=cirq.InsertStrategy.NEW)
     
     def add_to_cirq(self, timesteps: List, gate: str) -> None:
         """
@@ -217,7 +248,8 @@ class CircuitState():
         
         for timestep in timesteps:
             self.circuit.append(timestep)
-            self.cirq_circuit.append(timestep.cirq_timestep, strategy=cirq.InsertStrategy.EARLIEST)
+            #self.cirq_circuit.append(timestep.cirq_timestep, strategy=cirq.InsertStrategy.EARLIEST)
+            self.cirq_circuit.append(timestep.cirq_timestep, strategy=cirq.InsertStrategy.NEW)
     
     def update_circuit_topology(self, new_connectivity: TopologyState) -> None:
         """
@@ -253,23 +285,30 @@ def main():
     topology = TopologyState([(0,1),(1,2),(2,3)])
     circuit = CircuitState(circuit)
     print(circuit)
-    circuit.get_circuit_connectivity().draw()
+    #circuit.get_circuit_connectivity().draw()
 
-    circuit.add_to_cirq([[(0,2)], [(0,1)], [(1,3)], [(3,2)]], "CNOT")
+    
+    #circuit.add_to_cirq([[(0,1)]], "SWAP")
+    #print(circuit)
+    #circuit.update_circuit_after_swap((0,1),2)
+    #circuit.get_circuit_connectivity().draw()
+
+    circuit.add_to_cirq([[(0,3)], [(0,1)], [(1,3)], [(3,2)]], "CNOT")
     print(circuit)
-    circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(0,1)]], "CNOT")
-    print(circuit)
-    circuit.get_circuit_connectivity().draw()
+    #circuit.get_circuit_connectivity().draw()
+
     circuit.add_to_cirq([[(2,3)]], "CNOT")
     print(circuit)
-    circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(0,3)]], "CNOT")
+
+    print("SWAP [==========================]")
+    circuit.insert_circuit(2,[(1,2)],"SWAP")
     print(circuit)
-    circuit.get_circuit_connectivity().draw()
-    circuit.add_to_cirq([[(1,2)]], "SWAP")
+    circuit.update_circuit_after_swap((1,2),2)
     print(circuit)
-    circuit.get_circuit_connectivity().draw()
+    circuit.insert_circuit(4,[(0,2)],"SWAP")
+    print(circuit)
+    circuit.update_circuit_after_swap((0,2),4)
+    print(circuit)
     
     print("hamming distance: ", topology.hamming_distance_to_circuit(circuit.topology.nx_topology))
     print("Floyd warshall distance between topologies: ", topology.floyd_warshall_distance_to_circuit(circuit.topology.nx_topology))

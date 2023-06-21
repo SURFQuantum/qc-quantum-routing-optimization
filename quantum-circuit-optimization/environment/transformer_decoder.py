@@ -151,19 +151,25 @@ class GPT(nn.Module):
                                      bias) for _ in range(n_layer)]),
                                 ln_f = LayerNorm(n_embd, bias=bias),))
         
-        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+        # we won't be using this head
+        #self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
+
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
         # not 100% sure what this is, so far seems to be harmless. TODO investigate
-        self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
+
+        #self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
 
         # init all weights
+        
+        """
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
         for pn, p in self.named_parameters():
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * n_layer))
+        """
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -180,13 +186,17 @@ class GPT(nn.Module):
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
 
         # forward the GPT model itself
+        #print("idx", idx)
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos) # position embeddings of shape (t, n_embd)
         x = self.transformer.drop(tok_emb + pos_emb)
+        #x = tok_emb
+        #print("X EMBEDDING@@@@@@@@@@$$$$$$$$$", x)
         for block in self.transformer.h:
             x = block(x)
+        #    print("inner x******************", x)
 
         #x = self.transformer.ln_f(x)
 
         # take features from the first token in the sequence to represent the whole sequence
-        return x[:,0,:]
+        return x.mean(dim=1)

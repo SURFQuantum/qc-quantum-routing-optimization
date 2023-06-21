@@ -7,36 +7,6 @@ from typing import List, Tuple
 from state import CircuitState, TopologyState, TimeState
 from collections import namedtuple, deque
 
-class State:
-    def __init__(self,
-                state: TimeState = None,
-                circuit_topology: TopologyState = None,
-                time_step: int= None):
-    
-        self.state = state
-        self.circuit_topology = circuit_topology
-        self.time_step = time_step
-
-    def __str__(self):
-        state_representation = str(self.state)
-        topology = str(self.circuit_topology.adjacency_topology)
-        return f"State: \n {state_representation}\n\n topology:\n {topology}\n\n time step: {self.time_step}"
-
-
-# class Experience:
-#     def __init__(self, 
-#                     state: State = None, 
-#                     action: Tuple[int, int] = None, 
-#                     reward: float = None, 
-#                     done: bool = None,
-#                     next_state: State=None):
-        
-#             self.state = state
-#             self.action = action
-#             self.reward = reward
-#             self.done = done
-#             self.next_state = next_state
-
 # Named tuple for storing experience steps gathered during training
 Experience = namedtuple(
     "Experience",
@@ -84,19 +54,20 @@ class Environment:
                  circuit: CircuitState, 
                  target_topology: TopologyState,
                  distance_metric: str,
-                 max_time: int=32):
+                 max_time: int=32,
+                 steps_of_time: int = 1):
 
         self.current_time_step = 0
-        self.max_time = max_time
         self.original_topology = target_topology
         self.original_circuit = circuit
+        self.steps_of_time = steps_of_time
 
         #print(self.original_circuit)
         self.topology = TopologyState(target_topology)
         self.circuit = CircuitState(circuit)
 
         self.original_circuit_depth = self.circuit.length()
-
+        self.max_time = max_time
 
         #print(self.circuit)
         #raise ValueError()
@@ -104,7 +75,7 @@ class Environment:
         self.num_qubits = self.topology.num_qubits
         self.distance_metric = distance_metric
         self.allowed_swaps = self.get_swaps(self.topology)
-        #print("allowed swaps: ", self.allowed_swaps)
+        print("allowed swaps: ", self.allowed_swaps)
         
         # input representation special tokens
         self.S = self.num_qubits
@@ -116,6 +87,7 @@ class Environment:
         self.actions, self.action_to_idx = self.action_space()
         #print("action space: ", self.actions)
         #print("num of actions total: ", len(self.actions))
+        self.num_actions = len(self.actions)
 
         # reverse of the above: int -> (int, int)
         self.idx_to_action = {idx: action for action, idx in self.action_to_idx.items()}
@@ -131,12 +103,16 @@ class Environment:
                 self.swap_indices.append(self.action_to_idx[(q1,q2)])
             elif (q2, q1) in self.action_to_idx:
                 self.swap_indices.append(self.action_to_idx[(q2, q1)])
-        #print("swap indices: ", self.swap_indices)
+        
         self.swap_array = np.zeros(len(self.actions))
         self.swap_array[self.swap_indices] = 1  
-        #print("swap array: ", self.swap_array)    
-        #raise ValueError()
-  
+
+        self.first_state = self.get_first_state()
+
+    def reset_time(self, value: int):
+        self.current_time_step = 0
+        self.steps_of_time = value
+
     def reset(self):
         self.topology = TopologyState(self.original_topology)
         self.circuit = CircuitState(self.original_circuit)
@@ -193,7 +169,11 @@ class Environment:
 
         #reward = 1 / np.log(distance+1.5)
         #reward = 1 / distance
-        return -distance
+        reward = -distance
+
+        if distance==0:
+            reward = 20
+        return reward
     
     def is_terminated(self) -> bool:
 
@@ -201,26 +181,16 @@ class Environment:
             distance = self.topology.floyd_warshall_distance_to_circuit(self.circuit.topology.nx_topology)
 
         if distance==0:
-            #print("blawwww??????")
             return True
-        
-        #print("lol???????")
-        #print("max time???:",self.max_time)
-        #print("circuit length???", self.circuit.length())
-        #print("done lol???", self.circuit.length() > self.max_time)
-        #print("[=======================]")
-        if self.is_truncated():
-            #print("lol???????")
-            #print("max time???:",self.max_time)
-            #print("circuit length???", self.circuit.length())
-
-            #print("done lol???", self.circuit.length() > self.max_time)
-            return True
+      
+        #if self.is_truncated():
+        #    return 2
         
         return False
     
     def is_truncated(self) -> bool:
         return self.circuit.length() > self.max_time
+        #return self.circuit.length() > self.max_time
 
     # TODO: DOESN'T BELONG IN THIS CLASS
     def get_max_action(self, output_state_actions: np.ndarray) -> Tuple[int, int]:
@@ -261,46 +231,52 @@ class Environment:
 
         # if we are still handling the original circuit timesteps
         if self.current_time_step < self.original_circuit_depth-1:
-            self.circuit.insert_circuit(self.current_time_step+1, [swap_qubits], "SWAP")
+            self.circuit.insert_circuit(self.current_time_step+self.steps_of_time, [swap_qubits], "SWAP")
+            self.circuit.update_circuit_after_swap(swap_qubits, self.current_time_step+self.steps_of_time)
 
         else:
             self.circuit.add_to_cirq([[swap_qubits]], "SWAP")
     
     def get_first_state(self):
-        return self.get_DQN_input(State(self.circuit.circuit[0], 
-                     self.circuit.topology, 0))
+        return self.get_DQN_input(self.circuit.circuit[0], self.circuit.topology)
+
+    def first_step(self, action: int) -> Tuple:
+        self.update_circuit(self.idx_to_action[action])
+        self.current_time_step += self.steps_of_time
+
+        current_state = self.first_state
+
+        next_state = self.get_DQN_input(self.circuit.circuit[self.current_time_step], self.circuit.topology)
+
+        return current_state, next_state
 
     def step(self, action: int) -> Tuple:
         """
         action is a swap
         """
+        print("self.idx_to_action[action]", self.idx_to_action[action])
 
-        current_state = State(self.circuit.circuit[self.current_time_step], 
-                                            self.circuit.topology,
-                                            self.current_time_step)
-        
-        current_state = self.get_DQN_input(current_state)
-        # get the maximum action
+        # TODO: we need a way for the agent to not do anything
 
-        # update the topology by performing the swap 
-        # and update the circuit by adding the timestep with the swap
-        self.update_circuit(self.idx_to_action[action])
-        
-        # action is an integer, both ways is valid e.g., (1,2)==(2,1)
-        #action = self.action_to_idx[action] if action in self.action_to_idx else self.action_to_idx[(action[1], action[0])]
-        
-        # update time step
-        self.current_time_step += 1
 
-        # We have updated the current time step and topology already so we are
-        # effectively in the next state        
-        circuit = self.circuit.circuit[self.current_time_step]
-        topology = self.circuit.topology
-        next_state = State(circuit, 
-                           topology, 
-                           self.current_time_step)
+        if self.current_time_step==0:
+           current_state, next_state = self.first_step(action)
         
-        next_state = self.get_DQN_input(next_state)
+        else:
+            
+            current_state = self.get_DQN_input(self.circuit.circuit[self.current_time_step], self.circuit.topology)
+
+            # update the topology by performing the swap 
+            # and update the circuit by adding the timestep with the swap
+            self.update_circuit(self.idx_to_action[action])
+            
+            # action is an integer, both ways is valid e.g., (1,2)==(2,1)
+            #action = self.action_to_idx[action] if action in self.action_to_idx else self.action_to_idx[(action[1], action[0])]
+            # update time step
+            self.current_time_step += self.steps_of_time
+            print("self.steps_of_time***************************", self.steps_of_time)
+            print("self.steps_of_time in circuit length***************************", self.current_time_step)
+            next_state = self.get_DQN_input(self.circuit.circuit[self.current_time_step], self.circuit.topology)
 
         reward = self.get_reward()
         done = self.is_terminated()
@@ -308,7 +284,9 @@ class Environment:
         # s, r, d, s'
         return current_state, reward, done, next_state
     
-    def get_DQN_input(self, state: State):
+    def get_DQN_input(self, 
+                      state: TimeState = None,
+                      circuit_topology: TopologyState = None):
 
         """
         TODO: check the validty of below statement.
@@ -344,13 +322,14 @@ class Environment:
         Can we just slash (Q^2)*2 by 4? So Q^2 / 2, how big are topologies usually?
         """
 
-        gates = np.array(state.state.gates).flatten()
-        topology = self.get_swaps(state.circuit_topology, unique_swaps=True).flatten()
+        gates = np.array(state.gates).flatten()
+        topology = self.get_swaps(circuit_topology, unique_swaps=True).flatten()
         
         gates_length = gates.shape[0]
         topology_length = topology.shape[0]
 
         x = np.zeros((2+self.num_qubits+(self.num_qubits**2)*2,))
+        x = np.zeros((12))
         x[0] = self.S
         #print(x)
         x[self.num_qubits+1] = self.T

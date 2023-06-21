@@ -34,11 +34,11 @@ class DQN(nn.Module):
     """Simple MLP network."""
 
     def __init__(self, 
-                 block_size: int = 38,
+                 block_size: int = 12,
                  vocab_size: int = 7,
-                 n_layer: int = 8,
+                 n_layer: int = 4,
                  n_head: int = 4,
-                 n_embd: int = 64,
+                 n_embd: int = 32,
                  dropout: float = 0.0,
                  bias: bool = True,
                  output_dim: int=6):
@@ -61,7 +61,9 @@ class DQN(nn.Module):
 
     def forward(self, x):
         x = self.gpt(x.long())
+        #print("x output gpt:", x)
         x = self.mlp(x)
+        print("x output mlp", x)
 
         return x
     
@@ -69,8 +71,7 @@ class Agent:
     """Base Agent class handeling the interaction with the environment."""
 
     def __init__(self,
-                 env: Environment,
-                 replay_buffer: ReplayBuffer = None,
+                 env: Environment, 
                  inference: bool = False) -> None:
         """
         Args:
@@ -80,16 +81,19 @@ class Agent:
         self.env = env
         self.inference = inference
 
-        if not self.inference:
-            self.replay_buffer = replay_buffer
+        #if not self.inference:
+        #    self.replay_buffer = replay_buffer
 
-        self.state = self.env.get_first_state()
+        self.state = self.env.first_state
 
         self.swap_array = torch.tensor([self.env.swap_array])
+        self.previous_action = 0
+
+    def reset_time(self, value: int) -> None:
+        self.env.reset_time(value)
 
     def reset(self) -> None:
         """Resents the environment and updates the state."""
-        #print("resetted@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         self.env.reset()
 
     def get_action(self, model: nn.Module, epsilon: float, device: str) -> int:
@@ -111,13 +115,31 @@ class Agent:
             if device not in ["cpu"]:
                 state = state.cuda(device)
 
+            #print("state: ", state)
             q_values = model(state)
+            #print("q values: ", q_values)
             swap_array = self.swap_array#.to(device)
             #print("swap array: ",swap_array)
             #print("q values: ", q_values)
+            #print("swapped:",q_values*swap_array)
             _, action = torch.max(q_values*swap_array, dim=1)
-            action = int(action.item())
+            action = int(action)
+            """
+            _, action = torch.topk(q_values*swap_array, 2, dim=1)
+            print(action)
+            action = action.squeeze(0)
 
+            if action[0]==self.previous_action:
+                self.previous_action = action[1].item()
+                action = action[1].item()
+
+            else:
+                
+                self.previous_action = action[0].item()
+
+                action = int(action[0].item())
+            """
+            #print("action in model:",action)
         return action
 
     @torch.no_grad()
@@ -143,17 +165,16 @@ class Agent:
 
         # do step in the environment
         new_state, reward, done, next_state = self.env.step(action)
-        #print(new_state)
-        #print("next state: ", next_state)
-        #print(reward)
-
+        
         exp = Experience(self.state, action, reward, done, new_state)
 
-        if not self.inference:
-            self.replay_buffer.append(exp)
+        #if not self.inference:
+        #    self.replay_buffer.append(exp)
 
         self.state = new_state
-        if done:
-            self.reset()
 
-        return reward, done
+        #if self.env.circuit.length()>self.max_time and not self.inference:
+        #    self.reset()
+        
+        print("reward, done",reward, done)
+        return exp

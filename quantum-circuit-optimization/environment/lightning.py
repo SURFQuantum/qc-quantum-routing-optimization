@@ -5,7 +5,7 @@ import torch
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import CSVLogger
 from torch import Tensor, nn
-from torch.optim import Adam, Optimizer
+from torch.optim import Adam, SGD, Optimizer
 from torch.utils.data import DataLoader
 
 import pandas as pd
@@ -21,17 +21,17 @@ class DQNLightning(LightningModule):
 
     def __init__(
         self,
-        batch_size: int = 256,
-        lr: float = 1e-4,
+        batch_size: int = 128,
+        lr: float = 1e-2,
         gamma: float = 0.99,
         sync_rate: int = 10,
-        replay_size: int = 100000,
-        warm_start_size: int = 1000,
-        eps_last_frame: int = 10000,
-        eps_start: float = 1.0,
+        replay_size: int = 1000,
+        warm_start_size: int = 100,
+        eps_last_frame: int = 1000,
+        eps_start: float = 0.6,
         eps_end: float = 0.01,
         episode_length: int = 32,
-        warm_start_steps: int = 1000,
+        warm_start_steps: int = 10000,
     ) -> None:
         """
         Args:
@@ -63,8 +63,10 @@ class DQNLightning(LightningModule):
         distance_metric = "floyd-warshall"
         self.env = Environment(circuit, target_topology, distance_metric)
 
-        self.buffer = ReplayBuffer(self.hparams.replay_size)
-        self.agent = Agent(self.env, self.buffer)
+        self.replay_buffer = ReplayBuffer(self.hparams.replay_size)
+        self.agent = Agent(self.env, inference=False)
+        self.max_time = 16
+        
         self.total_reward = 0
         self.episode_reward = 0
         self.populate(self.hparams.warm_start_steps)
@@ -77,8 +79,37 @@ class DQNLightning(LightningModule):
             steps: number of random steps to populate the buffer with
         """
         print("Populating the buffer...")
-        for _ in range(steps):
-            self.agent.play_step(self.net, epsilon=1.0)
+        #print("first one!!:",self.agent.env.circuit)
+        time_step = 1
+        for pass_through in range(100):
+            print()
+            print("PASSSS THORUGH [===============================]", pass_through)
+            self.agent = Agent(self.env, inference=False)
+            print("original !!:",self.agent.env.circuit)
+            for i in range(self.agent.env.original_circuit_depth):
+                exp = self.agent.play_step(self.net, epsilon=1.0)
+                self.replay_buffer.append(exp)
+                print("after swap: ", i, self.agent.env.circuit)
+                print("length of circuit?", self.agent.env.circuit.length())
+                print("current timestep in circuit", self.agent.env.current_time_step)
+
+                if exp.done or self.max_time==self.agent.env.circuit.length():
+                    print("WE DONE RESETTING@@@@@")
+                    self.agent.reset()
+                    time_step = 1
+                    self.agent.reset_time(time_step)
+                    break
+
+                if i==self.agent.env.original_circuit_depth-1:
+                    print("RESETTING TIME%$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+                    time_step += 1
+                    self.agent.reset_time(time_step)
+                    self.agent.env.steps_of_time = time_step
+                    break
+            if len(self.replay_buffer)>=steps:
+                break
+                
+        raise ValueError()
 
     def forward(self, x: Tensor) -> Tensor:
         """Passes in a state x through the network and gets the q_values of each action as an output.
@@ -104,18 +135,33 @@ class DQNLightning(LightningModule):
         states, actions, rewards, dones, next_states = batch
         actions = actions.long()
 
-        state_action_values = self.net(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        #print("states in the batch", states)
+        #print("states in the next states", next_states)
+
+        state_action_values = self.net(states)#.gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        #print("RAW ACTION VALUES", state_action_values)
+        #print("ACTIONS@@@@@", actions)
+        state_action_values = state_action_values.gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        #print("RAW ACTION VALUES", state_action_values)
 
         with torch.no_grad():
             device = self.get_device(batch)
             swap_array = torch.tensor(self.env.swap_array).unsqueeze(0).to(device).float()
             next_state_values = self.target_net(next_states)
+            #print("ajhlkdgflsjkdf", swap_array*next_state_values)
+
             next_state_values = torch.max(swap_array*next_state_values, dim=1)[0]
+            #print("NEXT STATE ACTION SWAP MULTIPLY", next_state_values)
             next_state_values[dones] = 0.0
             next_state_values = next_state_values.detach()
 
         expected_state_action_values = next_state_values * self.hparams.gamma + rewards
         #print("expected:", expected_state_action_values.dtype)
+
+        #print("exptected state action!!!!!!!", expected_state_action_values)
+        #print("next state values!!!!#########,", state_action_values)
+
+        #print("LOSSSSSSSSSSSSS", nn.MSELoss()(state_action_values, expected_state_action_values)/10)
 
         return nn.MSELoss()(state_action_values, expected_state_action_values)
 
@@ -137,11 +183,13 @@ class DQNLightning(LightningModule):
         """
         device = self.get_device(batch)
         epsilon = self.get_epsilon(self.hparams.eps_start, self.hparams.eps_end, self.hparams.eps_last_frame)
-        print("epsilon value: ", epsilon)
+        #print("epsilon value: ", epsilon)
         self.log("epsilon", epsilon)
 
         # step through environment with agent
-        reward, done = self.agent.play_step(self.net, epsilon, device)
+        exp = self.agent.play_step(self.net, epsilon, device)
+        self.replay_buffer.append(exp)
+        reward, done = exp.reward, exp.done
         #print("reward: ", type(reward))
         self.episode_reward += reward
         self.log("episode reward", self.episode_reward)
@@ -175,10 +223,10 @@ class DQNLightning(LightningModule):
 
     def __dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences."""
-        dataset = RLDataset(self.buffer, self.hparams.episode_length)
+        dataset = RLDataset(self.replay_buffer, self.hparams.episode_length)
         dataloader = DataLoader(
             dataset=dataset,
-            batch_size=self.hparams.batch_size, num_workers=4, pin_memory=True
+            batch_size=self.hparams.batch_size, num_workers=0, pin_memory=True
         )
         return dataloader
 
@@ -193,8 +241,8 @@ class DQNLightning(LightningModule):
 model = DQNLightning()
 
 trainer = Trainer(  # limiting got iPython runs
-    max_epochs=1000,
-    val_check_interval=1,
+    max_epochs=200,
+    val_check_interval=50,
     logger=CSVLogger(save_dir="logs/"),
 )
 
