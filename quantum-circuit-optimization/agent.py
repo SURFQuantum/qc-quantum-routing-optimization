@@ -1,20 +1,16 @@
 import pickle
 from os.path import exists
 
-from keras.optimizer_v2.adam import Adam
-from keras.models import model_from_json
+import torch
+from torch.nn import Linear, ReLU, Sequential, Softmax
+from qubit_allocation import Allocation
 import environment
 import numpy as np
-from keras.layers import Dense, Reshape, Softmax
-from keras.losses import CategoricalCrossentropy
-from keras.models import Sequential, save_model, load_model
-from keras.optimizers import adam_v2
 import os
 
 from circuit import Circuit
 from monte_carlo_ts import MCTS
 from save_data import load_object, save_circuit
-from keras.layers.core import Dense
 import qubit_allocation
 import numpy
 
@@ -37,13 +33,12 @@ class State:
         max += 1
         return max
 
-
     def circuit_length(self, circuit):
         self.length = len(circuit)
 
     def check(self, i, q):
         if i in q:
-             return True
+            return True
 
     def zero_runs(self, a):
         # Create an array that is 1 where a is 0, and pad each end with an extra 0.
@@ -94,8 +89,8 @@ class State:
         # and qubits on the rows (first matrix from the comments above)
         for i in range(self.n_qubits):
             qu = []
-            for j in range(0,len(state), self.n_qubits):
-                qu.append(j+i)
+            for j in range(0, len(state), self.n_qubits):
+                qu.append(j + i)
             q.append(qu)
         # print(q)
 
@@ -113,11 +108,12 @@ class State:
                     qubit_2 = q[d]
                     break
 
-            # place the qubit on the right place on the vector, if a vector is already taken, look for the next spot in the row
+            # place the qubit on the right place on the vector, if a vector is already taken,
+            # look for the next spot in the row
             for j, k in zip(qubit_1, qubit_2):
 
                 if state[j] == 0 and state[k] == 0:
-                    # add 10 to indicate its a CNOT, add 20 to indicate SWAP
+                    # add 10 to indicate it's a CNOT, add 20 to indicate SWAP
                     if i[2] == 0:
                         state[j] = i[1] + 10
                         state[k] = i[0] + 10
@@ -138,27 +134,27 @@ class Agent:
         self.input_size = self.n_qubits * (self.n_qubits - 2) + 1
         self.epochs = 50
         self.mcts = MCTS
-        self.connectivity = all.connectivity()
+        self.connectivity = all.connectivity(hardware='linear')
         self.swap = False
-        self.logic = [0,1,2,3]
+        self.logic = [0, 1, 2, 3]
+        super().__init__()
+        self.model = Sequential(
+            Linear(40, 10),
+            ReLU(),
+            Linear(10, 10),
+            ReLU(),
+            Linear(10, 10),
+            ReLU(),
+            Linear(10, 8),
+            Softmax()
+        )
 
-
-    def build_model(self, input_size):
-
-        model = Sequential()
-
-        model.add(Dense(10, input_dim=input_size, activation='relu'))
-        model.add(Dense(10, activation='relu'))
-        model.add(Dense(10, activation='relu'))
-        model.add(Dense(8, activation='linear'))
-        model.add(Reshape((1, 4, 2), input_shape=(8,)))
-        model.compile(loss=CategoricalCrossentropy(from_logits=True),
-                      optimizer=adam_v2.Adam(learning_rate=self.learning_rate))
-        return model
+    def forward(self, x):
+        return self.model(x)
 
     def save_model(self, model):
         filepath = './saved_model'
-        save_model(model, filepath)
+        torch.save(model, filepath)
 
     def model_train(self, model, state, y_train):
         model.fit(state, y_train, verbose=2, epochs=self.epochs)
@@ -176,44 +172,43 @@ class Agent:
             schedule = self.scheduled_gates.copy()
             schedule.append(gate)
             # state = self.state.state(schedule)
-            swaps, self.connectivity = self.add_swap(gate,self.scheduled_gates)
-            #print(swaps)
+            swaps, self.connectivity = self.add_swap(gate, self.scheduled_gates)
+            # print(swaps)
             for x in swaps:
                 self.scheduled_gates.append(x)
 
-        #gate,self.logic = self.mcts.swap_circuit()
+        # gate,self.logic = self.mcts.swap_circuit()
 
-        #print(self.scheduled_gates)
+        # print(self.scheduled_gates)
 
     def add_swap(self, gate, state):
         """
        Action from MCTS added to the scheduled gates
        """
-        return self.mcts.mcts(gate,state)
+        return self.mcts.mcts(gate, state)
+
 
 if __name__ == "__main__":
 
     for i in range(50):
         c = Circuit(4)
-        all = qubit_allocation.Allocation(c)
-        con = all.connectivity()
+        logical_qubits = [(3, 1), (1, 2), (2, 1), (2, 3), (0,1)]
+        all = Allocation(c)
+        con = all.connectivity(hardware='linear')
         topo = all.topology
         s = State(c)
-        mcts = MCTS(con,topo, s)
-        a = Agent(c,mcts, all)
+        mcts = MCTS(con, topo, s)
+        a = Agent(c, mcts, all)
         circ = c.get_circuit()
         print(f'Begin of the circuit {circ}')
         for i in circ:
             a.schedule_gate(i)
-        #print(a.scheduled_gates)
+        # print(a.scheduled_gates)
 
         save_circuit(a.scheduled_gates)
         directory = 'qiskit_depth/'
 
         for filename in sorted(os.listdir(directory)):
-            cir = load_object(directory+filename)
+            cir = load_object(directory + filename)
             print(cir)
         print('Circuit fully scheduled')
-
-
-
