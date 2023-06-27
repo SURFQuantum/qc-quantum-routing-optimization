@@ -1,3 +1,4 @@
+import copy
 from itertools import tee, permutations
 from math import log, sqrt, e, inf
 import random
@@ -11,7 +12,7 @@ def pairwise(iterable):
 
 
 class Node:
-    def __init__(self):
+    def __init__(self, connectivity):
         self.reward = 0
         self.visits = 0
         self.children: list[Node] = []
@@ -22,6 +23,9 @@ class Node:
         self.ucb = 0
         self.cnot = None
         self.distance = inf
+        self.topology = []
+        self.connectivity = connectivity
+
 
     def finished(self):
         return self.distance == 0 or self.circuit_depth == MCTS.max_circuit_depth
@@ -30,40 +34,55 @@ class Node:
         self.children.append(child)
         child.parent = self
 
+    @property
+    def available_actions(self):
+        possible_action = []
+
+        for i in self.connectivity:
+            q = [0, 0, 1]
+            q[0], q[1] = i[1], i[0]
+            swap_gate = [i[0], i[1], 1]
+            if swap_gate not in possible_action and q not in possible_action:
+                possible_action.append(swap_gate)
+
+        return possible_action
+
 
 class MCTS:
     max_circuit_depth = 25
 
-    def __init__(self, connectivity, topology):
+    def __init__(self):
         self.reward = 0
         self.parent = 0
         self.N = 0
         self.n = 0
         self.n_qubits = 4
-
-        # self.n_qubits = 6
-        self.logic = [0, 1, 2, 3]
-        self.root = Node()
-        self.connectivity = connectivity
-        self.topology = topology
         self.node_evaluator = lambda child, montecarlo: None
 
     # Node is a circuit with gates, parent node should change for every action, child node is the possible action
     # coming from parent node
-    @property
-    def action(self):
-        possible_action = []
-        connectivity_set = set(map(tuple, self.connectivity))
 
-        for i in permutations(self.topology, 2):
-            if tuple(i) in connectivity_set:
-                q = [0, 0, 1]
-                q[0], q[1] = i[1], i[0]
-                swap_gate = [i[0], i[1], 1]
-                if swap_gate not in possible_action and q not in possible_action:
-                    possible_action.append(swap_gate)
+    def new_con(self, node, swap):
+        con = copy.copy(node.connectivity)
+        a,b,_ = swap
 
-        return possible_action
+        for i, (x, y) in enumerate(con):
+            if x == a:
+                con[i] = (b, y)
+            if y == a:
+                con[i] = (x, b)
+            if x == b:
+                con[i] = (a, y)
+            if y == b:
+                con[i] = (x, a)
+            if x == a and y == b:
+                con[i] = (b, a)
+            if x == b and y == a:
+                con[i] = (a, b)
+
+        return con
+
+
 
     def ucb(self, node_i):
         """
@@ -81,17 +100,18 @@ class MCTS:
         :return:
         """
         gate = [b if x == a else a if x == b else x for x in gate]
-        self.logic = [b if x == a else a if x == b else x for x in self.logic]
         gate.append(0)
-        return gate, self.logic
+        # topology = self.topology
+        # topology = [b if x == a else a if x == b else x for x in topology]
+        return gate
 
-    def swap_schedule(self, i, end_state, action):
+    def swap_schedule(self, i, end_state, action, node):
         """
-    
-        :param i: 
-        :param end_state: 
-        :param action: 
-        :return: 
+
+        :param i:
+        :param end_state:
+        :param action:
+        :return:
         """
         a, b, _ = i
         end_distance = float('inf')
@@ -100,10 +120,13 @@ class MCTS:
         new_gate = [action[0], action[1]]
 
         # Swap the nodes and change the CNOT-gate
-        new_gate, _ = self.swap_circuit(a, b, new_gate)
+        new_gate = self.swap_circuit(a, b, new_gate)
+
+        #TODO: Fix distance to calculate reward
+        # Look into hamming distance and floyd warshall
 
         # Calculate the distance to an operable qubit connectivity location
-        for i in self.connectivity:
+        for i in node.connectivity:
             q0 = abs(new_gate[0] - i[0])
             q1 = abs(new_gate[1] - i[1])
             distance = q0 + q1
@@ -125,10 +148,10 @@ class MCTS:
         :param node:
         :return:
         """
-        for i in self.action:
-            child = Node()
+        for i in node.available_actions:
+            child = Node(self.new_con(node, i))
             child.action = i
-            end_state, reward, new_gate, end_distance = self.swap_schedule(child.action, False, node.cnot)
+            end_state, reward, new_gate, end_distance = self.swap_schedule(child.action, False, node.cnot, child)
             child.distance = end_distance
             child.parent = node
             child.ucb = self.ucb(child)
@@ -137,15 +160,18 @@ class MCTS:
             child.circuit_depth = node.circuit_depth + 1
             node.add_child(child)
 
+
+
     def mcts(self, root):
         """
-        
-        :param root: 
-        :return: 
+
+        :param root:
+        :return:
         """
         self.expansion(root)
 
         selected_node = root
+
         for i in range(self.max_circuit_depth):
             # Find the best option to expand
             selected_child = self.select_child(selected_node)
@@ -168,10 +194,11 @@ class MCTS:
         best_child = None
         best_value = -2
         for child in root.children:
+            print(f"v: {child.reward/child.visits}({child.action})", end=" ")
             if child.reward / child.visits > best_value:
                 best_value = child.reward / child.visits
                 best_child = child
-
+        print(" ")
         return best_child
 
         # return circuit, child
@@ -200,10 +227,10 @@ class MCTS:
     # function for backpropagation
     def backpropagation(self, leaf_node, reward):
         """
-        
-        :param leaf_node: 
-        :param reward: 
-        :return: 
+
+        :param leaf_node:
+        :param reward:
+        :return:
         """
         while leaf_node.parent is not None:
             leaf_node.reward += reward
@@ -212,9 +239,9 @@ class MCTS:
 
     def simulate(self, root):
         """
-        
-        :param root: 
-        :return: 
+
+        :param root:
+        :return:
         """
         current_node = root
         while not current_node.finished():
@@ -235,18 +262,20 @@ class MCTS:
         return 0  # model.forward(root.encoded)
 
 def main():
-    connectivity = [(0, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2), (3, 4), (4, 3)]
-    topology = [0, 1, 2, 3, 4]
-    gate = (4, 0, 0)
+    connectivity = [(2, 1), (1, 2), (1, 3), (3, 1), (1, 0), (0, 1), (4, 0), (0, 4)]
+    topology = [2, 1, 3, 0, 4]
+    gate = (4, 3, 0)
 
-    m = MCTS(connectivity, topology)
+    m = MCTS()
 
-    root = Node()
+    root = Node(connectivity)
     root.action = gate
     root.cnot = gate
+    #root.topology = topology
 
     while root.distance is not 0:
         root = m.mcts(root)
+        print(root.connectivity)
         print(root.action)
 
 
